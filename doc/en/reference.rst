@@ -1215,6 +1215,18 @@ passed multiple times. The expected format is ``name=value``. For example::
     a specific entry in the log. ``extra`` kwarg overrides the value specified
     on the command line or in the config.
 
+.. confval:: load_entrypoint_plugins
+
+    .. versionadded:: XXX
+
+    A list of pytest plugins that should be loaded via entrypoints.
+
+    By default all plugins are loaded. An empty list can be used to load none.
+
+    .. code-block:: ini
+
+        [pytest]
+        load_entrypoint_plugins = pytester,anotherplugin
 
 .. confval:: log_cli_date_format
 
