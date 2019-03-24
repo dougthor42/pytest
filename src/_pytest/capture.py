@@ -760,6 +760,9 @@ class SysStdinCapture(CaptureIO):
     def read(self, *args):
         return self._suspend_on_read("read", *args)
 
+    def readline(self, *args):
+        return self._suspend_on_read("readline", *args)
+
 
 class DontReadFromInput:
     encoding = None
