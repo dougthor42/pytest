@@ -1102,7 +1102,21 @@ def test_exit_outcome(testdir):
     result.stdout.fnmatch_lines(["*Exit: pytest_exit called*", "*= no tests ran in *"])
 
 
-def test_trace(testdir):
+def test_trace(testdir, monkeypatch):
+    calls = []
+
+    def check_call(*args, **kwargs):
+        calls.append((args, kwargs))
+        assert args == ("runcall",)
+
+        class _pdb:
+            def runcall(*args, **kwargs):
+                calls.append((args, kwargs))
+
+        return _pdb
+
+    monkeypatch.setattr("_pytest.debugging.pytestPDB._init_pdb", check_call)
+
     p1 = testdir.makepyfile(
         """
         import unittest
@@ -1113,13 +1127,5 @@ def test_trace(testdir):
     """
     )
     result = testdir.runpytest("--trace", str(p1))
-    result.stdout.fnmatch_lines(
-        [
-            "self = <test_trace.MyTestCase testMethod=_wrapped_testMethod>",
-            "    def test(self):",
-            ">       self.assertEqual('foo', 'foo')",
-            "test_trace.py:5: ",
-            "* in trace_dispatch",
-        ]
-    )
-    assert result.ret == ExitCode.TESTS_FAILED
+    assert len(calls) == 2
+    assert result.ret == 0
