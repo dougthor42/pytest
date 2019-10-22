@@ -1,8 +1,8 @@
-.. image:: https://docs.pytest.org/en/latest/_static/pytest1.png
-   :target: https://docs.pytest.org/en/latest/
-   :align: center
-   :alt: pytest
+pytest with enhancements
+========================
 
+This is a fork of pytest with enhancements that have been rejected upstream,
+have stalled there, or are not really fitting.
 
 ------
 
