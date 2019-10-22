@@ -23,7 +23,9 @@ jobs:
     # - numpy
     # - old attrs
     # Empty PYTEST_ADDOPTS to run this non-verbose.
-    - env: TOXENV=py37-lsof-pexpect-numpy-twisted,linting,docs,doctesting PYTEST_COVERAGE=1 PYTEST_ADDOPTS=
+    - env: TOXENV=py37-lsof-pexpect-numpy-twisted PYTEST_COVERAGE=1 PYTEST_ADDOPTS=
+
+    - env: TOXENV=linting,docs,doctesting PYTEST_COVERAGE=1
       cache:
         directories:
           - $HOME/.cache/pre-commit
