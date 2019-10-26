@@ -9,6 +9,7 @@ import sys
 import textwrap
 import zipfile
 from functools import partial
+from pathlib import Path
 
 import py
 
@@ -17,6 +18,8 @@ import pytest
 from _pytest.assertion import util
 from _pytest.assertion.rewrite import _get_assertion_exprs
 from _pytest.assertion.rewrite import AssertionRewritingHook
+from _pytest.assertion.rewrite import get_cache_dir
+from _pytest.assertion.rewrite import PYC_TAIL
 from _pytest.assertion.rewrite import PYTEST_TAG
 from _pytest.assertion.rewrite import rewrite_asserts
 from _pytest.main import ExitCode
@@ -190,11 +193,12 @@ class TestAssertionRewrite:
             pass
 
         msg = getmsg(f, {"cls": X}).splitlines()
-        if verbose > 0:
-
+        if verbose > 1:
+            assert msg == ["assert {!r} == 42".format(X), "  -{!r}".format(X), "  +42"]
+        elif verbose > 0:
             assert msg == [
                 "assert <class 'test_...e.<locals>.X'> == 42",
-                "  -<class 'test_assertrewrite.TestAssertionRewrite.test_name.<locals>.X'>",
+                "  -{!r}".format(X),
                 "  +42",
             ]
         else:
@@ -206,9 +210,17 @@ class TestAssertionRewrite:
         def f():
             assert "1234567890" * 5 + "A" == "1234567890" * 5 + "B"
 
-        assert getmsg(f).splitlines()[0] == (
-            "assert '123456789012...901234567890A' == '123456789012...901234567890B'"
-        )
+        msg = getmsg(f).splitlines()[0]
+        if request.config.getoption("verbose") > 1:
+            assert msg == (
+                "assert '12345678901234567890123456789012345678901234567890A' "
+                "== '12345678901234567890123456789012345678901234567890B'"
+            )
+        else:
+            assert msg == (
+                "assert '123456789012...901234567890A' "
+                "== '123456789012...901234567890B'"
+            )
 
     def test_dont_rewrite_if_hasattr_fails(self, request):
         class Y:
@@ -1542,41 +1554,97 @@ def test_get_assertion_exprs(src, expected):
     assert _get_assertion_exprs(src) == expected
 
 
-def test_try_mkdir(monkeypatch, tmp_path):
-    from _pytest.assertion.rewrite import try_mkdir
+def test_try_makedirs(monkeypatch, tmp_path):
+    from _pytest.assertion.rewrite import try_makedirs
 
     p = tmp_path / "foo"
 
     # create
-    assert try_mkdir(str(p))
+    assert try_makedirs(str(p))
     assert p.is_dir()
 
     # already exist
-    assert try_mkdir(str(p))
+    assert try_makedirs(str(p))
 
     # monkeypatch to simulate all error situations
-    def fake_mkdir(p, *, exc):
+    def fake_mkdir(p, exist_ok=False, *, exc):
         assert isinstance(p, str)
         raise exc
 
-    monkeypatch.setattr(os, "mkdir", partial(fake_mkdir, exc=FileNotFoundError()))
-    assert not try_mkdir(str(p))
+    monkeypatch.setattr(os, "makedirs", partial(fake_mkdir, exc=FileNotFoundError()))
+    assert not try_makedirs(str(p))
 
-    monkeypatch.setattr(os, "mkdir", partial(fake_mkdir, exc=NotADirectoryError()))
-    assert not try_mkdir(str(p))
+    monkeypatch.setattr(os, "makedirs", partial(fake_mkdir, exc=NotADirectoryError()))
+    assert not try_makedirs(str(p))
 
-    monkeypatch.setattr(os, "mkdir", partial(fake_mkdir, exc=PermissionError()))
-    assert not try_mkdir(str(p))
+    monkeypatch.setattr(os, "makedirs", partial(fake_mkdir, exc=PermissionError()))
+    assert not try_makedirs(str(p))
 
     err = OSError()
     err.errno = errno.EROFS
-    monkeypatch.setattr(os, "mkdir", partial(fake_mkdir, exc=err))
-    assert not try_mkdir(str(p))
+    monkeypatch.setattr(os, "makedirs", partial(fake_mkdir, exc=err))
+    assert not try_makedirs(str(p))
 
     # unhandled OSError should raise
     err = OSError()
     err.errno = errno.ECHILD
-    monkeypatch.setattr(os, "mkdir", partial(fake_mkdir, exc=err))
+    monkeypatch.setattr(os, "makedirs", partial(fake_mkdir, exc=err))
     with pytest.raises(OSError) as exc_info:
-        try_mkdir(str(p))
+        try_makedirs(str(p))
     assert exc_info.value.errno == errno.ECHILD
+
+
+class TestPyCacheDir:
+    @pytest.mark.parametrize(
+        "prefix, source, expected",
+        [
+            ("c:/tmp/pycs", "d:/projects/src/foo.py", "c:/tmp/pycs/projects/src"),
+            (None, "d:/projects/src/foo.py", "d:/projects/src/__pycache__"),
+            ("/tmp/pycs", "/home/projects/src/foo.py", "/tmp/pycs/home/projects/src"),
+            (None, "/home/projects/src/foo.py", "/home/projects/src/__pycache__"),
+        ],
+    )
+    def test_get_cache_dir(self, monkeypatch, prefix, source, expected):
+        if prefix:
+            if sys.version_info < (3, 8):
+                pytest.skip("pycache_prefix not available in py<38")
+            monkeypatch.setattr(sys, "pycache_prefix", prefix)
+
+        assert get_cache_dir(Path(source)) == Path(expected)
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 8), reason="pycache_prefix not available in py<38"
+    )
+    def test_sys_pycache_prefix_integration(self, tmp_path, monkeypatch, testdir):
+        """Integration test for sys.pycache_prefix (#4730)."""
+        pycache_prefix = tmp_path / "my/pycs"
+        monkeypatch.setattr(sys, "pycache_prefix", str(pycache_prefix))
+        monkeypatch.setattr(sys, "dont_write_bytecode", False)
+
+        testdir.makepyfile(
+            **{
+                "src/test_foo.py": """
+                import bar
+                def test_foo():
+                    pass
+            """,
+                "src/bar/__init__.py": "",
+            }
+        )
+        result = testdir.runpytest()
+        assert result.ret == 0
+
+        test_foo = Path(testdir.tmpdir) / "src/test_foo.py"
+        bar_init = Path(testdir.tmpdir) / "src/bar/__init__.py"
+        assert test_foo.is_file()
+        assert bar_init.is_file()
+
+        # test file: rewritten, custom pytest cache tag
+        test_foo_pyc = get_cache_dir(test_foo) / ("test_foo" + PYC_TAIL)
+        assert test_foo_pyc.is_file()
+
+        # normal file: not touched by pytest, normal cache tag
+        bar_init_pyc = get_cache_dir(bar_init) / "__init__.{cache_tag}.pyc".format(
+            cache_tag=sys.implementation.cache_tag
+        )
+        assert bar_init_pyc.is_file()
