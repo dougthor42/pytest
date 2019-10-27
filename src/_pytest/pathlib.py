@@ -59,13 +59,14 @@ def on_rm_rf_error(func, path: str, exc, *, start_path) -> bool:
         return False
 
     if func not in (os.rmdir, os.remove, os.unlink):
-        warnings.warn(
-            PytestWarning(
-                "(rm_rf) unknown function {} when removing {}:\n{}: {}".format(
-                    path, func, exctype, excvalue
+        if func not in (os.open,):
+            warnings.warn(
+                PytestWarning(
+                    "(rm_rf) unknown function {} when removing {}:\n{}: {}".format(
+                        path, func, exctype, excvalue
+                    )
                 )
             )
-        )
         return False
 
     # Chmod + retry.
