@@ -317,9 +317,6 @@ def _enter_pdb(node, excinfo, rep):
 def _postmortem_traceback(excinfo):
     from doctest import UnexpectedException
 
-    # Save original exception, to be used with e.g. pdb.pm().
-    sys.last_type, sys.last_value, sys.last_traceback = excinfo._excinfo
-
     if isinstance(excinfo.value, UnexpectedException):
         # A doctest.UnexpectedException is not useful for post_mortem.
         # Use the underlying exception instead:
