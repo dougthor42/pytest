@@ -160,6 +160,7 @@ class TestTracebackEntry:
         except AssertionError:
             exci = _pytest._code.ExceptionInfo.from_current()
         entry = exci.traceback[0]
+        assert entry.name == "test_getsource"
         source = entry.getsource()
         assert len(source) == 6
         assert "assert False" in source[5]
