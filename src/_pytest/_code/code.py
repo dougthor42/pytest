@@ -7,6 +7,7 @@ from inspect import CO_VARKEYWORDS
 from io import StringIO
 from traceback import format_exception_only
 from types import CodeType
+from types import FrameType
 from types import TracebackType
 from typing import Any
 from typing import Dict
@@ -424,6 +425,8 @@ class ExceptionInfo(Generic[_E]):
         cls,
         exc_info: Tuple["Type[_E]", "_E", TracebackType],
         exprinfo: Optional[str] = None,
+        *,
+        frame: Optional[FrameType] = None,
     ) -> "ExceptionInfo[_E]":
         """returns an ExceptionInfo for an existing exc_info tuple.
 
@@ -444,11 +447,23 @@ class ExceptionInfo(Generic[_E]):
             if exprinfo and exprinfo.startswith(cls._assert_start_repr):
                 _striptext = "AssertionError: "
 
+        # Merge with frame's stack.
+        if sys.version_info >= (3, 7):
+            if not frame:
+                frame = sys._getframe().f_back
+            tb = exc_info[2]
+            while frame:
+                tb = TracebackType(
+                    tb, frame, tb_lasti=frame.f_lasti, tb_lineno=frame.f_lineno
+                )
+                frame = frame.f_back
+            exc_info = exc_info[:2] + (tb,)
+
         return cls(exc_info, _striptext)
 
     @classmethod
     def from_current(
-        cls, exprinfo: Optional[str] = None
+        cls, exprinfo: Optional[str] = None, *, frame: Optional[FrameType] = None
     ) -> "ExceptionInfo[BaseException]":
         """returns an ExceptionInfo matching the current traceback
 
@@ -465,8 +480,12 @@ class ExceptionInfo(Generic[_E]):
         assert tup[0] is not None, "no current exception"
         assert tup[1] is not None, "no current exception"
         assert tup[2] is not None, "no current exception"
+
+        if not frame:
+            frame = sys._getframe().f_back
+
         exc_info = (tup[0], tup[1], tup[2])
-        return cls.from_exc_info(exc_info, exprinfo)
+        return cls.from_exc_info(exc_info, exprinfo, frame=frame)
 
     @classmethod
     def for_later(cls) -> "ExceptionInfo[_E]":
