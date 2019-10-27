@@ -15,7 +15,6 @@ import py
 import _pytest
 from _pytest import fixtures
 from _pytest import nodes
-from _pytest._code import ExceptionInfo
 from _pytest._code import filter_traceback
 from _pytest.compat import ascii_escaped
 from _pytest.compat import get_default_arg_names
@@ -790,7 +789,7 @@ class FunctionMixin(PyobjMixin):
             self.parent.newinstance()
             self.obj = self._getobj()
 
-    def _prunetraceback(self, excinfo: ExceptionInfo):
+    def _prunetraceback(self, excinfo):
         if hasattr(self, "_obj") and not self.config.getoption("fulltrace", False):
             code = _pytest._code.Code(get_real_func(self.obj))
             path, firstlineno = code.path, code.firstlineno
