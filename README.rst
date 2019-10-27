@@ -6,30 +6,12 @@ have stalled there, or are not really fitting.
 
 ------
 
-.. image:: https://img.shields.io/pypi/v/pytest.svg
-    :target: https://pypi.org/project/pytest/
-
-.. image:: https://img.shields.io/conda/vn/conda-forge/pytest.svg
-    :target: https://anaconda.org/conda-forge/pytest
-
-.. image:: https://img.shields.io/pypi/pyversions/pytest.svg
-    :target: https://pypi.org/project/pytest/
-
-.. image:: https://codecov.io/gh/pytest-dev/pytest/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/pytest-dev/pytest
+.. image:: https://codecov.io/gh/blueyed/pytest/branch/my-master/graph/badge.svg
+    :target: https://codecov.io/gh/blueyed/pytest
     :alt: Code coverage Status
 
-.. image:: https://travis-ci.org/pytest-dev/pytest.svg?branch=master
-    :target: https://travis-ci.org/pytest-dev/pytest
-
-.. image:: https://dev.azure.com/pytest-dev/pytest/_apis/build/status/pytest-CI?branchName=master
-    :target: https://dev.azure.com/pytest-dev/pytest
-
-.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-    :target: https://github.com/psf/black
-
-.. image:: https://www.codetriage.com/pytest-dev/pytest/badges/users.svg
-    :target: https://www.codetriage.com/pytest-dev/pytest
+.. image:: https://travis-ci.org/blueyed/pytest.svg?branch=my-master
+    :target: https://travis-ci.org/blueyed/pytest
 
 The ``pytest`` framework makes it easy to write small tests, yet
 scales to support complex functional testing for applications and libraries.
@@ -99,7 +81,7 @@ For full documentation, including installation, tutorials and PDF documents, ple
 Bugs/Requests
 -------------
 
-Please use the `GitHub issue tracker <https://github.com/pytest-dev/pytest/issues>`_ to submit bugs or request features.
+Please use the `GitHub issue tracker <https://github.com/blueyed/pytest/issues>`_ to submit bugs or request features.
 
 
 Changelog
