@@ -265,10 +265,7 @@ class Node:
         if self.config.getoption("fulltrace", False):
             style = "long"
         else:
-            tb = _pytest._code.Traceback([excinfo.traceback[-1]])
             self._prunetraceback(excinfo)
-            if len(excinfo.traceback) == 0:
-                excinfo.traceback = tb
             if style == "auto":
                 style = "long"
         # XXX should excinfo.getrepr record all data and toterminal() process it?
@@ -354,7 +351,9 @@ class Collector(Node):
             ntraceback = traceback.cut(path=self.fspath)
             if ntraceback == traceback:
                 ntraceback = ntraceback.cut(excludepath=tracebackcutdir)
-            excinfo.traceback = ntraceback.filter()
+            ntraceback = ntraceback.filter()
+            if ntraceback:
+                excinfo.traceback = ntraceback
 
 
 def _check_initialpaths_for_relpath(session, fspath):
