@@ -63,7 +63,7 @@ def on_rm_rf_error(func, path: str, exc, *, start_path) -> bool:
             warnings.warn(
                 PytestWarning(
                     "(rm_rf) unknown function {} when removing {}:\n{}: {}".format(
-                        path, func, exctype, excvalue
+                        func, path, exctype, excvalue
                     )
                 )
             )
