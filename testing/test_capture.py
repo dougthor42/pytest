@@ -453,7 +453,7 @@ class TestCaptureFixture:
                 "E*capfd*capsys*same*time*",
                 "*ERROR*setup*test_two*",
                 "E*capsys*capfd*same*time*",
-                "*2 error*",
+                "*2 errors*",
             ]
         )
 
@@ -1486,11 +1486,9 @@ def test_typeerror_encodedfile_write(testdir):
     """
     )
     result_without_capture = testdir.runpytest("-s", str(p))
-
     result_with_capture = testdir.runpytest(str(p))
 
     assert result_with_capture.ret == result_without_capture.ret
-
     result_with_capture.stdout.fnmatch_lines(
-        ["E           TypeError: write() argument must be str, not bytes"]
+        ["E * TypeError: write() argument must be str, not bytes"]
     )
