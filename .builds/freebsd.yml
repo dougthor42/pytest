@@ -19,4 +19,4 @@ tasks:
 
   - test: |
       cd pytest
-      tox -vv
+      tox -vv -- --exitfirst
