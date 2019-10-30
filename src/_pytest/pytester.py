@@ -1,4 +1,5 @@
 """(disabled by default) support for testing pytest and pytest plugins."""
+import functools
 import gc
 import importlib
 import os
@@ -857,7 +858,32 @@ class Testdir:
         if syspathinsert:
             self.syspathinsert()
         now = time.time()
-        capture = MultiCapture(Capture=SysCapture)
+
+        if "stdin" in kwargs:
+            stdin = kwargs.pop("stdin")
+        else:
+            if "-s" in args:
+                stdin = sys.stdin
+            else:
+                stdin = self.CLOSE_STDIN
+
+        if stdin is self.CLOSE_STDIN:
+            stdin = SysCapture.CLOSE_STDIN
+        elif isinstance(stdin, str):
+
+            class EchoingInput(StringIO):
+                def readline(self, *args, **kwargs):
+                    ret = super().readline(*args, **kwargs)
+                    if ret:
+                        sys.stdout.write(ret)
+                    return ret
+
+            stdin = EchoingInput(stdin)
+        elif stdin is None:
+            stdin = sys.stdin
+        Capture = functools.partial(SysCapture, stdin=stdin)
+
+        capture = MultiCapture(Capture=Capture)
         capture.start_capturing()
         try:
             try:
