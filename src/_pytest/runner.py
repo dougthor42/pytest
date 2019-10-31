@@ -208,7 +208,7 @@ class CallInfo:
         return self._result
 
     @classmethod
-    def from_call(cls, func, when, reraise=None):
+    def from_call(cls, func, when, reraise=None, merge_frame=None):
         #: context of invocation: one of "setup", "call",
         #: "teardown", "memocollect"
         start = time()
@@ -216,10 +216,28 @@ class CallInfo:
         try:
             result = func()
         except:  # noqa
-            excinfo = ExceptionInfo.from_current(merge_frame=sys._getframe())
+            excinfo = ExceptionInfo.from_current()
             if reraise is not None and excinfo.errisinstance(reraise):
                 raise
             result = None
+
+            # Merge with frame's stack.
+            if sys.version_info >= (3, 7):
+                from types import TracebackType
+
+                merge_frame = excinfo._merge_frame = sys._getframe()
+                exc_info = excinfo._excinfo
+                assert exc_info
+                tb = exc_info[2]
+                f = merge_frame
+                while f:
+                    tb = TracebackType(tb, f, tb_lasti=f.f_lasti, tb_lineno=f.f_lineno)
+                    f = f.f_back
+                exc_info = exc_info[:2] + (tb,)
+
+            # Save original exception, to be used with e.g. pdb.pm().
+            sys.last_type, sys.last_value, sys.last_traceback = exc_info
+
         stop = time()
         return cls(start=start, stop=stop, when=when, result=result, excinfo=excinfo)
 
