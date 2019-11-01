@@ -9,6 +9,7 @@ import platform
 import sys
 import time
 from functools import partial
+from pathlib import Path
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -1007,7 +1008,30 @@ class TerminalReporter:
 
 def _get_pos(config, rep):
     nodeid = config.cwd_relative_nodeid(rep.nodeid)
-    return nodeid
+    path, _, testname = nodeid.partition("::")
+    if not testname:
+        return nodeid
+
+    # Append location (line number).
+    # This uses the first traceback entry for the location in the test itself
+    # (rather than reprcrash, which might be less relevant for going to
+    # directly, e.g. pexpect failures in pytest itself).
+    try:
+        testloc = rep.longrepr.reprtraceback.reprentries[0].reprfileloc
+    except AttributeError:
+        return nodeid
+
+    assert isinstance(testloc.path, str), testloc.path
+    testloc_path = Path(testloc.path)
+    try:
+        testloc_path = testloc_path.relative_to(config.invocation_dir)
+    except ValueError:
+        pass
+
+    if str(testloc_path) == path:
+        return "%s:%d(%s)" % (path, testloc.lineno, testname)
+
+    return "%s (%s:%d)" % (nodeid, testloc_path, testloc.lineno)
 
 
 def _get_line_with_reprcrash_message(config, rep, termwidth):
