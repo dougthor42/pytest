@@ -9,7 +9,7 @@ packages:
 environment:
   PYTEST_ADDOPTS: --showlocals --durations=100
   # NOTE: no numpy, since it has no wheel.
-  TOXENV: py36-lsof-pexpect-twisted
+  TOXENV: py36-pexpect-twisted
   PYTEST_COVERAGE: 1
 
 tasks:
