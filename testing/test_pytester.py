@@ -629,7 +629,9 @@ def test_runtest_inprocess_stdin(testdir, monkeypatch):
                 input()
         """
     )
-    result = testdir.runpytest(str(p1), stdin="42\n")
+    result = testdir.runpytest(
+        str(p1), "-o", "capture_suspend_on_stdin=0", stdin="42\n"
+    )
     result.stdout.fnmatch_lines(["* 1 passed in *"])
     assert result.ret == 0
 
