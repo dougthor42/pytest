@@ -66,12 +66,43 @@ def _getdimensions():
     return columns, lines
 
 
+_cached_terminal_width = None
+
+
 def get_terminal_width():
-    width, _ = _getdimensions()
-    return width
+    global _cached_terminal_width
+
+    if not _cached_terminal_width:
+        if _cached_terminal_width is None:
+            import signal
+
+            _prev_sig_handler = None
+
+            def _clear_cache_on_sigwinch(signum, frame):
+                global _cached_terminal_width
+
+                _cached_terminal_width = None
+                if _prev_sig_handler and _prev_sig_handler is not signal.SIG_DFL:
+                    _prev_sig_handler(signum, frame)
+
+            try:
+                _prev_sig_handler = signal.signal(
+                    signal.SIGWINCH, _clear_cache_on_sigwinch
+                )
+                _cached_terminal_width = True
+            except ValueError:  # e.g. "signal only works in main thread"
+                _cached_terminal_width = False  # "cannot cache"
+
+        if _cached_terminal_width is False:
+            return _getdimensions()[0]
+    if _cached_terminal_width is True:
+        _cached_terminal_width, _ = _getdimensions()
+    return _cached_terminal_width
 
 
 class TerminalWriter(py.io.TerminalWriter):
+    _cached_terminal_width = None
+
     @property
     def fullwidth(self):
         if hasattr(self, "_terminal_width"):
@@ -302,7 +333,6 @@ class TerminalReporter:
         self._tw = _pytest.config.create_terminal_writer(config, file)
         # self.writer will be deprecated in pytest-3.4
         self.writer = self._tw
-        self._screen_width = self._tw.fullwidth
         self.currentfspath = None
         self.reportchars = getreportopt(config)
         self.hasmarkup = self._tw.hasmarkup
@@ -522,7 +552,8 @@ class TerminalReporter:
                 self._write_progress_information_filling_space()
             else:
                 w = self._width_of_current_line
-                past_edge = w + progress_length + 1 >= self._screen_width
+                screen_width = self._tw.fullwidth
+                past_edge = w + progress_length + 1 >= screen_width
                 if past_edge:
                     msg = self._get_progress_information_message()
                     self._tw.write(msg + "\n", cyan=True)

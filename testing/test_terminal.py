@@ -1813,8 +1813,11 @@ def test_collecterror(testdir):
 
 
 def test_getdimensions(monkeypatch):
-    from _pytest.terminal import _getdimensions, get_terminal_width
+    import _pytest.terminal
+    from _pytest.terminal import _getdimensions
+    from _pytest.terminal import get_terminal_width
 
+    monkeypatch.setattr(_pytest.terminal, "_cached_terminal_width", None)
     monkeypatch.setenv("COLUMNS", "30")
     monkeypatch.setenv("LINES", "25")
 
@@ -1857,3 +1860,67 @@ def test_getdimensions(monkeypatch):
     calls = []
     assert _getdimensions() == (80, 24)
     assert calls == [0, 2, 1]
+
+    # Simulate SIGWINCH not being available.
+    calls = []
+    _pytest.terminal._cached_terminal_width = False
+    assert get_terminal_width() == 80
+    assert calls == [0, 2, 1]
+
+
+def test_sigwinch(testdir, monkeypatch):
+    import signal
+
+    monkeypatch.setenv("LINES", "30")
+    monkeypatch.setenv("COLUMNS", "50")
+
+    p1 = testdir.makepyfile(
+        """
+        from _pytest.terminal import TerminalWriter
+
+        def test(monkeypatch):
+            import signal
+            import _pytest.terminal
+
+            assert signal.getsignal(signal.SIGWINCH) is not signal.SIG_DFL
+
+            def prev_handler(signal, frame):
+                print("prev_handler" + "_was_called", signal, frame)
+
+            signal.signal(signal.SIGWINCH, prev_handler)
+
+            _pytest.terminal._cached_terminal_width = None
+
+            tw = TerminalWriter()
+            assert tw.fullwidth == 50
+
+            assert input() == "step_1"
+            monkeypatch.setenv("COLUMNS", "51")
+            # Uses cache, without SIGWINCH.
+            assert tw.fullwidth == 50
+
+            print("waiting_for_sigwinch")
+            assert input() == "sent_sigwinch"
+            assert tw.fullwidth == 51
+
+            signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+            print("waiting_for_sigwinch")
+            assert input() == "sent_sigwinch"
+            assert tw.fullwidth == 51
+    """
+    )
+    cmdargs = [sys.executable, "-m", "pytest", "-s", "--full-trace", str(p1)]
+    child = testdir.spawn(" ".join(cmdargs))
+    child.sendline("step_1")
+
+    child.expect_exact("waiting_for_sigwinch")
+    child.kill(signal.SIGWINCH)
+    child.sendline("sent_sigwinch")
+    child.expect_exact("prev_handler_was_called")
+
+    child.expect_exact("waiting_for_sigwinch")
+    child.kill(signal.SIGWINCH)
+    child.sendline("sent_sigwinch")
+    rest = child.read().decode()
+    assert "prev_handler_was_called" not in rest
+    assert child.wait() == 0, rest
