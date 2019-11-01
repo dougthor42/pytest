@@ -620,6 +620,13 @@ def test_run_stdin(testdir):
 def test_runtest_inprocess_stdin(testdir, monkeypatch):
     import io
 
+    testdir.makeini(
+        """
+        [pytest]
+        capture_suspend_on_stdin = 0
+        """
+    )
+
     p1 = testdir.makepyfile(
         """
         import pytest
@@ -629,9 +636,7 @@ def test_runtest_inprocess_stdin(testdir, monkeypatch):
                 input()
         """
     )
-    result = testdir.runpytest(
-        str(p1), "-o", "capture_suspend_on_stdin=0", stdin="42\n"
-    )
+    result = testdir.runpytest(str(p1), stdin="42\n")
     result.stdout.fnmatch_lines(["* 1 passed in *"])
     assert result.ret == 0
 
@@ -695,7 +700,9 @@ def test_runtest_inprocess_stdin(testdir, monkeypatch):
             assert input() == '42'
     """
     )
-    result = testdir.runpytest(str(p1), "-s", stdin=None)
+    result = testdir.runpytest(
+        str(p1), "-o", "capture_suspend_on_stdin=0", "-s", stdin=None
+    )
     result.stdout.fnmatch_lines(["* 1 passed in *"])
     assert result.ret == 0
 
