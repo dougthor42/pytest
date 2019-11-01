@@ -20,7 +20,6 @@ import attr
 import pluggy
 import py
 from more_itertools import collapse
-from wcwidth import wcswidth
 
 import pytest
 from _pytest import nodes
@@ -1008,6 +1007,8 @@ def _get_pos(config, rep):
 
 def _get_line_with_reprcrash_message(config, rep, termwidth):
     """Get summary line for a report, trying to add reprcrash message."""
+    from wcwidth import wcswidth
+
     verbose_word = rep._get_verbose_word(config)
     pos = _get_pos(config, rep)
 
