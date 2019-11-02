@@ -766,7 +766,7 @@ class FormattedExcinfo:
             else:
                 message = excinfo and excinfo.typename or ""
             path = self._makepath(entry.path)
-            filelocrepr = ReprFileLocation(path, entry.lineno + 1, message)
+            filelocrepr = ReprFileLocation(str(path), entry.lineno + 1, message)
             localsrepr = None
             if not short:
                 localsrepr = self.repr_locals(entry.locals)
@@ -1035,24 +1035,33 @@ class ReprEntry(TerminalRepr):
         )
 
 
+@attr.s
 class ReprFileLocation(TerminalRepr):
-    def __init__(self, path, lineno, message, *, short_msg=None):
-        self.path = str(path)
-        self.lineno = lineno
-        self.message = message
-        if short_msg is None:
-            short_msg = message
-            i = short_msg.find("\n")
-            if i != -1:
-                short_msg = short_msg[:i]
-        self.short_msg = short_msg
+    path = attr.ib(type=str)
+    lineno = attr.ib(type=int)
+    message = attr.ib(type=str)
+    short_msg = attr.ib(type=Optional[str], default=None, kw_only=True)
+
+    def __attrs_post_init__(self):
+        assert type(self.path) == str
+
+    def _get_short_msg(self):
+        if self.short_msg:
+            return self.short_msg
+        msg = self.message
+        i = msg.find("\n")
+        if i != -1:
+            if msg[i - 1] == "\r":
+                i -= 1
+            msg = msg[:i] + "..."
+        return msg
 
     def toterminal(self, tw, style=None):
         # filename and lineno output for each entry,
         # using an output format that most editors unterstand
         bold = style != "short"
         tw.write("%s" % self.path, bold=bold)
-        tw.line(":{}: {}".format(self.lineno, self.short_msg))
+        tw.line(":{}: {}".format(self.lineno, self._get_short_msg()))
 
 
 class ReprLocals(TerminalRepr):
