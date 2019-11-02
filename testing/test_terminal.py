@@ -1863,7 +1863,7 @@ def test_getdimensions(monkeypatch):
 
     # Simulate SIGWINCH not being available.
     calls = []
-    _pytest.terminal._cached_terminal_width = False
+    _pytest.terminal._cached_terminal_width_sighandler = False
     assert get_terminal_width() == 80
     assert calls == [0, 2, 1]
 
@@ -1890,6 +1890,7 @@ def test_sigwinch(testdir, monkeypatch):
             signal.signal(signal.SIGWINCH, prev_handler)
 
             _pytest.terminal._cached_terminal_width = None
+            _pytest.terminal._cached_terminal_width_sighandler = None
 
             tw = TerminalWriter()
             assert tw.fullwidth == 50
@@ -1921,6 +1922,8 @@ def test_sigwinch(testdir, monkeypatch):
     child.expect_exact("waiting_for_sigwinch")
     child.kill(signal.SIGWINCH)
     child.sendline("sent_sigwinch")
+
     rest = child.read().decode()
+    assert child.wait() == 0, rest
     assert "prev_handler_was_called" not in rest
     assert child.wait() == 0, rest
