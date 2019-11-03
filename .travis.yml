@@ -17,13 +17,12 @@ install:
 jobs:
   include:
     # Coverage for:
-    # - pytester's LsofFdLeakChecker
     # - TestArgComplete (linux only)
     # - numpy
     # - verbose=0
     # - test_sys_breakpoint_interception (via pexpect).
     # Empty PYTEST_ADDOPTS to run this non-verbose.
-    - env: TOXENV=py37-lsof-numpy-pexpect-twisted PYTEST_COVERAGE=1 PYTEST_ADDOPTS=
+    - env: TOXENV=py37-numpy-pexpect-twisted PYTEST_COVERAGE=1 PYTEST_ADDOPTS=
 
     - env: TOXENV=linting,docs,doctesting PYTEST_COVERAGE=1
       cache:
