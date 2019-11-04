@@ -186,7 +186,7 @@ def get_config(args=None, plugins=None):
 
     if args is not None:
         # Handle any "-p no:plugin" args.
-        pluginmanager.consider_preparse(args)
+        pluginmanager.consider_preparse(args, exclude_only=True)
 
     for spec in default_plugins:
         pluginmanager.import_plugin(spec)
@@ -289,19 +289,15 @@ class PytestPluginManager(PluginManager):
     def is_blocked(self, name):
         ret = super(PytestPluginManager, self).is_blocked(name)
         if not ret:
+            config = self.config
             try:
-                config = self.config
-            except AttributeError:  # XXX: not necessary?
-                pass
-            else:
-                try:
-                    load_entrypoint_plugins = config.getini("load_entrypoint_plugins")
-                except AttributeError:  # 'Config' object has no attribute 'inicfg'
-                    assert not hasattr(config, "inicfg")
-                    return False
-                if load_entrypoint_plugins is not notset:
-                    if name not in load_entrypoint_plugins:
-                        return True
+                load_entrypoint_plugins = config.getini("load_entrypoint_plugins")
+            except AttributeError:  # 'Config' object has no attribute 'inicfg'
+                assert not hasattr(config, "inicfg")
+                return False
+            if load_entrypoint_plugins is not notset:
+                if name not in load_entrypoint_plugins:
+                    return True
         return ret
 
     def parse_hookimpl_opts(self, plugin, name):
@@ -518,7 +514,7 @@ class PytestPluginManager(PluginManager):
     #
     #
 
-    def consider_preparse(self, args):
+    def consider_preparse(self, args, exclude_only):
         i = 0
         n = len(args)
         while i < n:
@@ -534,6 +530,8 @@ class PytestPluginManager(PluginManager):
                 elif opt.startswith("-p"):
                     parg = opt[2:]
                 else:
+                    continue
+                if exclude_only and not parg.startswith("no:"):
                     continue
                 self.consider_pluginarg(parg)
 
@@ -929,7 +927,7 @@ class Config:
 
         self._checkversion()
         self._consider_importhook(args)
-        self.pluginmanager.consider_preparse(args)
+        self.pluginmanager.consider_preparse(args, exclude_only=False)
         if not os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD"):
             # Don't autoload from setuptools entry point. Only explicitly specified
             # plugins are going to be loaded.
