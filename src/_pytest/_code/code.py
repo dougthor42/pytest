@@ -571,7 +571,7 @@ class ExceptionInfo(Generic[_E]):
         funcargs: bool = False,
         truncate_locals: bool = True,
         chain: bool = True,
-    ):
+    ) -> Union["ReprExceptionInfo", "ExceptionChainRepr"]:
         """
         Return str()able representation of this exception info.
 
@@ -841,19 +841,19 @@ class FormattedExcinfo:
 
         return traceback, extraline
 
-    def repr_excinfo(self, excinfo):
-
+    def repr_excinfo(self, excinfo: ExceptionInfo) -> "ExceptionChainRepr":
         repr_chain = (
             []
         )  # type: List[Tuple[ReprTraceback, Optional[ReprFileLocation], Optional[str]]]
         e = excinfo.value
+        excinfo_ = excinfo  # type: Optional[ExceptionInfo]
         descr = None
         seen = set()  # type: Set[int]
         while e is not None and id(e) not in seen:
             seen.add(id(e))
-            if excinfo:
-                reprtraceback = self.repr_traceback(excinfo)
-                reprcrash = excinfo._getreprcrash()
+            if excinfo_:
+                reprtraceback = self.repr_traceback(excinfo_)
+                reprcrash = excinfo_._getreprcrash()  # type: Optional[ReprFileLocation]
             else:
                 # fallback to native repr if the exception doesn't have a traceback:
                 # ExceptionInfo objects require a full traceback to work
@@ -865,7 +865,7 @@ class FormattedExcinfo:
             repr_chain += [(reprtraceback, reprcrash, descr)]
             if e.__cause__ is not None and self.chain:
                 e = e.__cause__
-                excinfo = (
+                excinfo_ = (
                     ExceptionInfo((type(e), e, e.__traceback__))
                     if e.__traceback__
                     else None
@@ -875,7 +875,7 @@ class FormattedExcinfo:
                 e.__context__ is not None and not e.__suppress_context__ and self.chain
             ):
                 e = e.__context__
-                excinfo = (
+                excinfo_ = (
                     ExceptionInfo((type(e), e, e.__traceback__))
                     if e.__traceback__
                     else None
@@ -901,6 +901,9 @@ class TerminalRepr:
     def __repr__(self):
         return "<{} instance at {:0x}>".format(self.__class__, id(self))
 
+    def toterminal(self, tw) -> None:
+        raise NotImplementedError()
+
 
 class ExceptionRepr(TerminalRepr):
     def __init__(self) -> None:
@@ -909,7 +912,7 @@ class ExceptionRepr(TerminalRepr):
     def addsection(self, name, content, sep="-"):
         self.sections.append((name, content, sep))
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         for name, content, sep in self.sections:
             tw.sep(sep, name)
             tw.line(content)
@@ -924,7 +927,7 @@ class ExceptionChainRepr(ExceptionRepr):
         self.reprtraceback = chain[-1][0]
         self.reprcrash = chain[-1][1]
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         for element in self.chain:
             element[0].toterminal(tw)
             if element[2] is not None:
@@ -939,7 +942,7 @@ class ReprExceptionInfo(ExceptionRepr):
         self.reprtraceback = reprtraceback
         self.reprcrash = reprcrash
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         self.reprtraceback.toterminal(tw)
         super().toterminal(tw)
 
@@ -952,7 +955,7 @@ class ReprTraceback(TerminalRepr):
         self.extraline = extraline
         self.style = style
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         # the entries might have different styles
         for i, entry in enumerate(self.reprentries):
             if entry.style == "long":
@@ -984,7 +987,7 @@ class ReprEntryNative(TerminalRepr):
     def __init__(self, tblines):
         self.lines = tblines
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         tw.write("".join(self.lines))
 
 
@@ -1012,7 +1015,7 @@ class ReprEntry(TerminalRepr):
                 markup = line
             tw.line(markup)
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         if self.style == "short":
             self.reprfileloc.toterminal(tw, style="short")
             self._color_error_lines(tw, self.lines)
@@ -1056,7 +1059,7 @@ class ReprFileLocation(TerminalRepr):
             msg = msg[:i] + "..."
         return msg
 
-    def toterminal(self, tw, style=None):
+    def toterminal(self, tw, style=None) -> None:
         # filename and lineno output for each entry,
         # using an output format that most editors unterstand
         bold = style != "short"
@@ -1068,7 +1071,7 @@ class ReprLocals(TerminalRepr):
     def __init__(self, lines):
         self.lines = lines
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         for line in self.lines:
             tw.line(line)
 
@@ -1077,7 +1080,7 @@ class ReprFuncArgs(TerminalRepr):
     def __init__(self, args):
         self.args = args
 
-    def toterminal(self, tw):
+    def toterminal(self, tw) -> None:
         if self.args:
             linesofar = ""
             for name, value in self.args:
