@@ -574,11 +574,18 @@ def test_pytester_addopts_before_testdir(request, monkeypatch):
     assert os.environ.get("PYTEST_ADDOPTS") == orig
 
 
-def test_testdir_respects_monkeypatch(testdir, monkeypatch):
+@pytest.mark.parametrize("method", ("setenv", "delenv"))
+def test_testdir_respects_monkeypatch(method, testdir, monkeypatch):
     assert monkeypatch is testdir.monkeypatch
     assert testdir._env_run_update["COLUMNS"] == "80"
     assert testdir._get_env_run_update()["COLUMNS"] == "80"
-    monkeypatch.setenv("COLUMNS", "12")
+    if method == "setenv":
+        monkeypatch.setenv("COLUMNS", "12")
+    else:
+        assert method == "delenv"
+        with pytest.raises(KeyError):
+            monkeypatch.delenv("COLUMNS")
+        monkeypatch.delenv("COLUMNS", raising=False)
     assert "COLUMNS" not in testdir._get_env_run_update()
 
 

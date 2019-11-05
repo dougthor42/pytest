@@ -225,6 +225,7 @@ class MonkeyPatch:
         if name not in dic:
             if raising:
                 raise KeyError(name)
+            self._setitem.append((dic, name, notset))
         else:
             self._setitem.append((dic, name, dic.get(name, notset)))
             del dic[name]
