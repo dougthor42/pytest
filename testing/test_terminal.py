@@ -1951,6 +1951,7 @@ def test_sigwinch(testdir, monkeypatch):
         from _pytest.terminal import TerminalWriter
 
         def test(monkeypatch):
+            import os
             import signal
             import _pytest.terminal
 
@@ -1963,6 +1964,9 @@ def test_sigwinch(testdir, monkeypatch):
 
             _pytest.terminal._cached_terminal_width = None
             _pytest.terminal._cached_terminal_width_sighandler = None
+
+            # Outer monkeypatch is respected.
+            assert os.getenv("COLUMNS") == "50"
 
             tw = TerminalWriter()
             assert tw.fullwidth == 50

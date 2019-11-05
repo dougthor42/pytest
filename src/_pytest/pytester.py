@@ -18,7 +18,6 @@ from weakref import WeakKeyDictionary
 
 import py
 
-import _pytest.terminal
 import pytest
 from _pytest._code import Source
 from _pytest._io.saferepr import saferepr
@@ -495,16 +494,12 @@ class Testdir:
         self.request.addfinalizer(self.finalize)
         self._method = self.request.config.getoption("--runpytest")
 
-        mp = self.monkeypatch = MonkeyPatch()
+        mp = self.monkeypatch = self.request.getfixturevalue("monkeypatch")
         mp.setenv("PYTEST_DEBUG_TEMPROOT", str(self.test_tmproot))
         # Ensure no unexpected caching via tox.
         mp.delenv("TOX_ENV_DIR", raising=False)
         # Discard outer pytest options.
         mp.delenv("PYTEST_ADDOPTS", raising=False)
-
-        # Use predictable terminal size.
-        mp.setenv("COLUMNS", "80")
-        mp.setattr(_pytest.terminal, "_cached_terminal_width", None)
 
         # Environment (updates) for inner runs.
         tmphome = str(self.tmpdir)
@@ -512,6 +507,7 @@ class Testdir:
             "HOME": tmphome,
             "USERPROFILE": tmphome,
             "PY_COLORS": "0",
+            "COLUMNS": "80",
         }
 
     def __repr__(self):
@@ -820,7 +816,7 @@ class Testdir:
         try:
             # Do not load user config (during runs only).
             mp_run = MonkeyPatch()
-            for k, v in self._env_run_update.items():
+            for k, v in self._get_env_run_update().items():
                 mp_run.setenv(k, v)
             finalizers.append(mp_run.undo)
 
@@ -1082,7 +1078,7 @@ class Testdir:
         env["PYTHONPATH"] = os.pathsep.join(
             filter(None, [os.getcwd(), env.get("PYTHONPATH", "")])
         )
-        env.update(self._env_run_update)
+        env.update(self._get_env_run_update())
         kw["env"] = env
 
         if stdin is Testdir.CLOSE_STDIN:
@@ -1253,12 +1249,16 @@ class Testdir:
 
         # Do not load user config.
         env = os.environ.copy()
-        env.update(self._env_run_update)
+        env.update(self._get_env_run_update())
 
         child = pexpect.spawn(cmd, logfile=logfile, env=env)
         self.request.addfinalizer(logfile.close)
         child.timeout = expect_timeout
         return child
+
+    def _get_env_run_update(self):
+        outer = {item[1] for item in self.monkeypatch._setitem if item[0] is os.environ}
+        return {k: v for k, v in self._env_run_update.items() if k not in outer}
 
 
 def getdecoded(out):
