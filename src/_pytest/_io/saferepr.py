@@ -1,5 +1,6 @@
 import pprint
 import reprlib
+from typing import Any
 
 
 def _try_repr_or_str(obj):
@@ -11,7 +12,7 @@ def _try_repr_or_str(obj):
         return '{}("{}")'.format(type(obj).__name__, obj)
 
 
-def _format_repr_exception(exc, obj):
+def _format_repr_exception(exc: BaseException, obj: Any) -> str:
     try:
         exc_info = _try_repr_or_str(exc)
     except (KeyboardInterrupt, SystemExit):
@@ -23,7 +24,7 @@ def _format_repr_exception(exc, obj):
     )
 
 
-def _ellipsize(s, maxsize):
+def _ellipsize(s: str, maxsize: int) -> str:
     if len(s) > maxsize:
         i = max(0, (maxsize - 3) // 2)
         j = max(0, maxsize - 3 - i)
@@ -36,12 +37,12 @@ class SafeRepr(reprlib.Repr):
     and includes information on exceptions raised during the call.
     """
 
-    def __init__(self, maxsize):
+    def __init__(self, maxsize: int) -> None:
         super().__init__()
         self.maxstring = maxsize
         self.maxsize = maxsize
 
-    def repr(self, x):
+    def repr(self, x: Any) -> str:
         try:
             s = super().repr(x)
         except (KeyboardInterrupt, SystemExit):
@@ -50,7 +51,7 @@ class SafeRepr(reprlib.Repr):
             s = _format_repr_exception(exc, x)
         return _ellipsize(s, self.maxsize)
 
-    def repr_instance(self, x, level):
+    def repr_instance(self, x: Any, level: int) -> str:
         try:
             s = repr(x)
         except (KeyboardInterrupt, SystemExit):
@@ -60,7 +61,7 @@ class SafeRepr(reprlib.Repr):
         return _ellipsize(s, self.maxsize)
 
 
-def safeformat(obj):
+def safeformat(obj: Any) -> str:
     """return a pretty printed string for the given object.
     Failing __repr__ functions of user instances will be represented
     with a short exception info.
@@ -71,7 +72,7 @@ def safeformat(obj):
         return _format_repr_exception(exc, obj)
 
 
-def saferepr(obj, maxsize=240):
+def saferepr(obj: Any, maxsize: int = 240) -> str:
     """return a size-limited safe repr-string for the given object.
     Failing __repr__ functions of user instances will be represented
     with a short exception info and 'saferepr' generally takes
