@@ -61,7 +61,7 @@ class TestNewAPI:
         "ignore:could not create cache path:pytest.PytestWarning"
     )
     def test_cache_failure_warns(self, testdir):
-        cache_dir = testdir.tmpdir.ensure_dir(".pytest_cache")
+        cache_dir = str(testdir.tmpdir.ensure_dir(".pytest_cache"))
         mode = os.stat(cache_dir)[stat.ST_MODE]
         testdir.tmpdir.ensure_dir(".pytest_cache").chmod(0)
         try:
