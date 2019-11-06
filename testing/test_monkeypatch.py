@@ -161,6 +161,14 @@ def test_delitem():
     assert d == {"hello": "world", "x": 1}
 
 
+def test_delitem_setitem_for_unknown():
+    from _pytest.monkeypatch import notset
+
+    monkeypatch = MonkeyPatch()
+    monkeypatch.delitem({}, "x", raising=False)
+    assert monkeypatch._setitem == [({}, "x", notset)]
+
+
 def test_setenv():
     monkeypatch = MonkeyPatch()
     with pytest.warns(pytest.PytestWarning):

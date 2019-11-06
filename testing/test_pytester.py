@@ -565,17 +565,28 @@ def test_no_matching_after_match():
     assert str(e.value).splitlines() == ["fnmatch: '*'", "   with: '1'"]
 
 
-def test_pytester_addopts(request, monkeypatch):
+def test_pytester_addopts_before_testdir(request, monkeypatch):
+    orig = os.environ.get("PYTEST_ADDOPTS", None)
     monkeypatch.setenv("PYTEST_ADDOPTS", "--orig-unused")
-
     testdir = request.getfixturevalue("testdir")
+    assert "PYTEST_ADDOPTS" not in os.environ
+    testdir.finalize()
+    assert os.environ.get("PYTEST_ADDOPTS") == orig
 
-    try:
-        assert "PYTEST_ADDOPTS" not in os.environ
-    finally:
-        testdir.finalize()
 
-    assert os.environ["PYTEST_ADDOPTS"] == "--orig-unused"
+@pytest.mark.parametrize("method", ("setenv", "delenv"))
+def test_testdir_respects_monkeypatch(method, testdir, monkeypatch):
+    assert monkeypatch is testdir.monkeypatch
+    assert testdir._env_run_update["COLUMNS"] == "80"
+    assert testdir._get_env_run_update()["COLUMNS"] == "80"
+    if method == "setenv":
+        monkeypatch.setenv("COLUMNS", "12")
+    else:
+        assert method == "delenv"
+        with pytest.raises(KeyError):
+            monkeypatch.delenv("COLUMNS")
+        monkeypatch.delenv("COLUMNS", raising=False)
+    assert "COLUMNS" not in testdir._get_env_run_update()
 
 
 def test_run_stdin(testdir):
