@@ -772,6 +772,60 @@ def test_spawn_uses_tmphome(testdir):
     assert child.wait() == 0, out.decode("utf8")
 
 
+@pytest.mark.parametrize("method", ("spawn", "spawn_pytest"))
+def test_spawn_interface(method, testdir, monkeypatch):
+    with pytest.raises(TypeError, match="^missing args$"):
+        getattr(testdir, method)()
+
+    with pytest.raises(TypeError, match="^invalid type for arg: list$"):
+        getattr(testdir, method)(["cmd"], env={})
+
+
+def test_spawn_calls(testdir, monkeypatch):
+    calls = []
+
+    def check_calls(*args, **kwargs):
+        calls.append([args, kwargs])
+
+    try:
+        monkeypatch.setattr("pexpect.spawn", check_calls)
+    except ImportError:
+
+        class fake_pexpect:
+            __version__ = "3.0"
+
+            def spawn(*args, **kwargs):
+                check_calls(*args, **kwargs)
+
+        sys.modules["pexpect"] = fake_pexpect
+
+    testdir.spawn("cmd arg1 'arg2 with spaces'")
+    assert len(calls) == 1
+    assert calls[0][0] == ("cmd", ["arg1", "arg2 with spaces"])
+    expected_env = os.environ.copy()
+    expected_env.update(testdir._get_env_run_update())
+    assert calls[0][1] == {"timeout": 5.0, "env": expected_env}
+
+    calls.clear()
+    testdir.spawn("cmd", "arg1", "arg2 with spaces", env={})
+    assert calls == [
+        [("cmd", ["arg1", "arg2 with spaces"]), {"env": {}, "timeout": 5.0}]
+    ]
+
+    calls.clear()
+    testdir.spawn_pytest("arg1", "arg2 with spaces", env={})
+    basetemp = str(testdir.tmpdir.join("temp-pexpect"))
+    assert calls == [
+        [
+            (
+                sys.executable,
+                ["-mpytest", "--basetemp=" + basetemp, "arg1", "arg2 with spaces"],
+            ),
+            {"env": {}, "timeout": 5.0},
+        ]
+    ]
+
+
 def test_run_result_repr():
     outlines = ["some", "normal", "output"]
     errlines = ["some", "nasty", "errors", "happened"]
