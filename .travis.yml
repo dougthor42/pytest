@@ -24,6 +24,9 @@ jobs:
     # Empty PYTEST_ADDOPTS to run this non-verbose.
     - env: TOXENV=py37-numpy-pexpect-twisted PYTEST_COVERAGE=1
 
+    - env: TOXENV=py38-xdist PYTEST_COVERAGE=1
+      python: '3.8'
+
     - env: TOXENV=linting,docs,doctesting PYTEST_COVERAGE=1
       cache:
         directories:
