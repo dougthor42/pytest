@@ -196,13 +196,17 @@ class TestTraceback:
             exci = _pytest._code.ExceptionInfo.from_current()
         tb = exci.traceback
         baselnum = exci.value.args[0]
+        if sys.version_info >= (3, 8):
+            expected_inner_lnum = baselnum - 1
+        else:
+            expected_inner_lnum = baselnum
         assert str(tb) == "\n".join(
             [
                 '  File "{}", line {}, in test_getsource'.format(
                     __file__, baselnum + 5
                 ),
                 "    inner()",
-                '  File "{}", line {}, in inner'.format(__file__, baselnum),
+                '  File "{}", line {}, in inner'.format(__file__, expected_inner_lnum),
                 "    raise AssertionError(  # some comment",
                 "        sys._getframe().f_lineno",
                 "    )",
