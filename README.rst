@@ -4,6 +4,15 @@ pytest with enhancements
 This is a fork of pytest with enhancements that have been rejected upstream,
 have stalled there, or are not really fitting.
 
+This is mainly for getting things done, and having things here that I like better.
+
+I have started with https://github.com/blueyed/pytest-enhancements, but figured
+that it is more sane to have a personal fork than a plugin that has to
+monkeypatch pytest anyway.
+
+It also allows for having CI etc (in contrast to having this only in a local
+integration branch).
+
 ------
 
 .. image:: https://codecov.io/gh/blueyed/pytest/branch/my-master/graph/badge.svg
