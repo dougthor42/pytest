@@ -442,7 +442,7 @@ class Session(nodes.FSCollector):
             # one or more conftests are not in use at this fspath
             proxy = FSHookProxy(fspath, pm, remove_mods)
         else:
-            # all plugis are active for this fspath
+            # all plugins are active for this fspath
             proxy = self.config.hook
         return proxy
 
@@ -505,11 +505,10 @@ class Session(nodes.FSCollector):
 
     def collect(self):
         for initialpart in self._initialparts:
-            arg = initialpart
-            self.trace("processing argument", arg)
+            self.trace("processing argument", initialpart)
             self.trace.root.indent += 1
             try:
-                yield from self._collect(arg)
+                yield from self._collect(initialpart)
             except NoMatch:
                 report_arg = "::".join(map(str, initialpart))
                 # we are inside a make_report hook so
