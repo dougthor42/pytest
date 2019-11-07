@@ -26,6 +26,7 @@ from more_itertools import collapse
 
 import pytest
 from _pytest import nodes
+from _pytest.assertion.util import _running_on_ci
 from _pytest.compat import shell_quote
 from _pytest.main import ExitCode
 
@@ -1048,8 +1049,7 @@ class TerminalReporter:
         if not self.reportchars:
             return
 
-        # NOTE: there's also _pytest.assertion._running_on_ci.
-        if os.environ.get("CI") == "true" or not self.isatty:
+        if not self.isatty or _running_on_ci():
             termwidth = None
         else:
             termwidth = self._tw.fullwidth
