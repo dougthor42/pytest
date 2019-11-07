@@ -138,7 +138,7 @@ class Frame:
     def exec_(self, code, **vars):
         """ exec 'code' in the frame
 
-            'vars' are optiona; additional local variables
+            'vars' are optional; additional local variables
         """
         f_locals = self.f_locals.copy()
         f_locals.update(vars)
@@ -208,7 +208,7 @@ class TracebackEntry:
 
     @property
     def locals(self):
-        """ locals of underlaying frame """
+        """ locals of underlying frame """
         return self.frame.f_locals
 
     def getfirstlinesource(self):
@@ -288,7 +288,7 @@ class TracebackEntry:
 
     @property
     def name(self):
-        """ co_name of underlaying code """
+        """ co_name of underlying code """
         return self.frame.code.raw.co_name
 
 
@@ -316,7 +316,7 @@ class Traceback(list):
     def cut(self, path=None, lineno=None, firstlineno=None, excludepath=None):
         """ return a Traceback instance wrapping part of this Traceback
 
-            by provding any combination of path, lineno and firstlineno, the
+            by providing any combination of path, lineno and firstlineno, the
             first frame to start the to-be-returned traceback is determined
 
             this allows cutting the first part of a Traceback instance e.g.
@@ -1061,7 +1061,7 @@ class ReprFileLocation(TerminalRepr):
 
     def toterminal(self, tw, style=None) -> None:
         # filename and lineno output for each entry,
-        # using an output format that most editors unterstand
+        # using an output format that most editors understand
         bold = style != "short"
         tw.write("%s" % self.path, bold=bold)
         tw.line(":{}: {}".format(self.lineno, self._get_short_msg()))
