@@ -4,6 +4,7 @@ import re
 import sys
 import warnings
 from contextlib import contextmanager
+from typing import Optional
 
 import pytest
 from _pytest.fixtures import fixture
@@ -230,10 +231,17 @@ class MonkeyPatch:
             self._setitem.append((dic, name, dic.get(name, notset)))
             del dic[name]
 
-    def setenv(self, name, value, prepend=None):
+    def setenv(
+        self, name: str, value: Optional[str], prepend: Optional[str] = None
+    ) -> None:
         """ Set environment variable ``name`` to ``value``.  If ``prepend``
         is a character, read the current environment variable value
-        and prepend the ``value`` adjoined with the ``prepend`` character."""
+        and prepend the ``value`` adjoined with the ``prepend`` character.
+
+        A value of ``None`` unsets it, which is useful as a shortcut with
+        parametrization."""
+        if value is None:
+            return self.delenv(name, raising=False)
         if not isinstance(value, str):
             warnings.warn(
                 pytest.PytestWarning(
@@ -249,7 +257,7 @@ class MonkeyPatch:
             value = value + prepend + os.environ[name]
         self.setitem(os.environ, name, value)
 
-    def delenv(self, name, raising=True):
+    def delenv(self, name: str, raising: bool = True) -> None:
         """ Delete ``name`` from the environment. Raise KeyError if it does
         not exist.
 
