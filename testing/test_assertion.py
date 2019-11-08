@@ -413,7 +413,8 @@ class TestAssert_reprcompare:
         expl = callequal([0, 1, 2], [0, 1])
         assert len(expl) > 1
 
-    def test_list_wrap_for_multiple_lines(self):
+    def test_list_wrap_for_multiple_lines(self, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
         long_d = "d" * 80
         l1 = ["a", "b", "c"]
         l2 = ["a", "b", "c", long_d]
@@ -443,7 +444,8 @@ class TestAssert_reprcompare:
             "  ]",
         ]
 
-    def test_list_wrap_for_width_rewrap_same_length(self):
+    def test_list_wrap_for_width_rewrap_same_length(sel, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
         long_a = "a" * 30
         long_b = "b" * 30
         long_c = "c" * 30
@@ -459,6 +461,30 @@ class TestAssert_reprcompare:
             "   'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',",
             "   'cccccccccccccccccccccccccccccc',",
             "+  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',",
+            "  ]",
+        ]
+
+    def test_list_dont_wrap_strings(self, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
+        long_a = "a" * 10
+        l1 = ["a"] + [long_a for _ in range(0, 7)]
+        l2 = ["should not get wrapped"]
+        diff = callequal(l1, l2, verbose=True)
+        assert diff == [
+            "['a', 'aaaaaa...aaaaaaa', ...] == ['should not get wrapped']",
+            "At index 0 diff: 'a' != 'should not get wrapped'",
+            "Left contains 7 more items, first extra item: 'aaaaaaaaaa'",
+            "Full diff:",
+            "  [",
+            "+  'should not get wrapped',",
+            "-  'a',",
+            "-  'aaaaaaaaaa',",
+            "-  'aaaaaaaaaa',",
+            "-  'aaaaaaaaaa',",
+            "-  'aaaaaaaaaa',",
+            "-  'aaaaaaaaaa',",
+            "-  'aaaaaaaaaa',",
+            "-  'aaaaaaaaaa',",
             "  ]",
         ]
 
@@ -479,24 +505,59 @@ class TestAssert_reprcompare:
         ]
 
         long_a = "a" * 80
-        sub = {"long_a": long_a, "sub1": {"long_a": "substring that gets wrapped"}}
+        sub = {"long_a": long_a, "sub1": {"long_a": "substring that gets wrapped " * 2}}
         d1 = {"env": {"sub": sub}}
         d2 = {"env": {"sub": sub}, "new": 1}
         diff = callequal(d1, d2, verbose=True)
         assert diff == [
-            "{'env': {'sub...s wrapped'}}}} == {'env': {'sub...}}}, 'new': 1}",
+            "{'env': {'sub... wrapped '}}}} == {'env': {'sub...}}}, 'new': 1}",
             "Omitting 1 identical items, use -vv to show",
             "Right contains 1 more item:",
             "{'new': 1}",
             "Full diff:",
             "  {",
             "   'env': {'sub': {'long_a': '" + long_a + "',",
-            "                   'sub1': {'long_a': 'substring '",
-            "                                      'that '",
-            "                                      'gets '",
-            "                                      'wrapped'}}},",
+            "                   'sub1': {'long_a': 'substring that gets wrapped substring '",
+            "                                      'that gets wrapped '}}},",
             "+  'new': 1,",
             "  }",
+        ]
+
+    def test_compare_eq_iterable_uses_terminal_width(self, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 40)
+        l1 = list(range(0, 12))
+        l2 = list(range(0, 13))
+
+        diff = callequal(l1, l2, verbose=True)
+        assert diff == [
+            "[0, 1, 2, 3, 4, 5, ...] == [0, 1, 2, 3, 4, 5, ...]",
+            "Right contains one more item: 12",
+            "Full diff:",
+            "  [",
+            "   0,",
+            "   1,",
+            "   2,",
+            "   3,",
+            "   4,",
+            "   5,",
+            "   6,",
+            "   7,",
+            "   8,",
+            "   9,",
+            "   10,",
+            "   11,",
+            "+  12,",
+            "  ]",
+        ]
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
+        diff = callequal(l1, l2, verbose=True)
+        assert diff == [
+            "[0, 1, 2, 3, 4, 5, ...] == [0, 1, 2, 3, 4, 5, ...]",
+            "Right contains one more item: 12",
+            "Full diff:",
+            "- [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]",
+            "+ [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]",
+            "?                                      ++++",
         ]
 
     def test_dict(self):
