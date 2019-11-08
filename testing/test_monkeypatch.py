@@ -180,6 +180,12 @@ def test_setenv():
     assert "XYZ123" not in os.environ
 
 
+def test_setenv_with_None(monkeypatch):
+    os.environ["foo"] = "bar"
+    monkeypatch.setenv("foo", None)
+    assert "foo" not in os.environ
+
+
 def test_delenv():
     name = "xyz1234"
     assert name not in os.environ
