@@ -413,7 +413,8 @@ class TestAssert_reprcompare:
         expl = callequal([0, 1, 2], [0, 1])
         assert len(expl) > 1
 
-    def test_list_wrap_for_multiple_lines(self):
+    def test_list_wrap_for_multiple_lines(self, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
         long_d = "d" * 80
         l1 = ["a", "b", "c"]
         l2 = ["a", "b", "c", long_d]
@@ -443,7 +444,8 @@ class TestAssert_reprcompare:
             "  ]",
         ]
 
-    def test_list_wrap_for_width_rewrap_same_length(self):
+    def test_list_wrap_for_width_rewrap_same_length(sel, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
         long_a = "a" * 30
         long_b = "b" * 30
         long_c = "c" * 30
@@ -462,7 +464,8 @@ class TestAssert_reprcompare:
             "  ]",
         ]
 
-    def test_list_dont_wrap_strings(self):
+    def test_list_dont_wrap_strings(self, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
         long_a = "a" * 10
         l1 = ["a"] + [long_a for _ in range(0, 7)]
         l2 = ["should not get wrapped"]
@@ -518,6 +521,43 @@ class TestAssert_reprcompare:
             "                                      'that gets wrapped '}}},",
             "+  'new': 1,",
             "  }",
+        ]
+
+    def test_compare_eq_iterable_uses_terminal_width(self, monkeypatch):
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 40)
+        l1 = list(range(0, 12))
+        l2 = list(range(0, 13))
+
+        diff = callequal(l1, l2, verbose=True)
+        assert diff == [
+            "[0, 1, 2, 3, 4, 5, ...] == [0, 1, 2, 3, 4, 5, ...]",
+            "Right contains one more item: 12",
+            "Full diff:",
+            "  [",
+            "   0,",
+            "   1,",
+            "   2,",
+            "   3,",
+            "   4,",
+            "   5,",
+            "   6,",
+            "   7,",
+            "   8,",
+            "   9,",
+            "   10,",
+            "   11,",
+            "+  12,",
+            "  ]",
+        ]
+        monkeypatch.setattr("_pytest.terminal._cached_terminal_width", 80)
+        diff = callequal(l1, l2, verbose=True)
+        assert diff == [
+            "[0, 1, 2, 3, 4, 5, ...] == [0, 1, 2, 3, 4, 5, ...]",
+            "Right contains one more item: 12",
+            "Full diff:",
+            "- [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]",
+            "+ [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]",
+            "?                                      ++++",
         ]
 
     def test_dict(self):

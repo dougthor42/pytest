@@ -284,16 +284,19 @@ def _compare_eq_iterable(
         return ["Use -v to get the full diff"]
     # dynamic import to speedup pytest
     import difflib
+    from _pytest.terminal import get_terminal_width
 
-    left_formatting = pprint.pformat(left).splitlines()
-    right_formatting = pprint.pformat(right).splitlines()
+    width = get_terminal_width()
+
+    left_formatting = pprint.pformat(left, width=width).splitlines()
+    right_formatting = pprint.pformat(right, width=width).splitlines()
 
     # Re-format for different output lengths.
     lines_left = len(left_formatting)
     lines_right = len(right_formatting)
     if lines_left != lines_right:
-        left_formatting = _pformat_dispatch(left).splitlines()
-        right_formatting = _pformat_dispatch(right).splitlines()
+        left_formatting = _pformat_dispatch(left, width=width).splitlines()
+        right_formatting = _pformat_dispatch(right, width=width).splitlines()
 
     if lines_left > 1 or lines_right > 1:
         _surrounding_parens_on_own_lines(left_formatting)
