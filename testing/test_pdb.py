@@ -1383,3 +1383,16 @@ def test_pdb_in_thread_after_exit(testdir):
     rest = child.read().decode("utf8")
     assert "Exception in thread" not in rest
     assert child.exitstatus == 0
+
+
+@pytest.mark.parametrize("PYTEST_HIJACK_PDB", ("1", "", None))
+def test_PYTEST_HIJACK_PDB(PYTEST_HIJACK_PDB, testdir, monkeypatch):
+    import pdb
+
+    monkeypatch.setenv("PYTEST_HIJACK_PDB", PYTEST_HIJACK_PDB)
+
+    testdir.parseconfigure()
+    if PYTEST_HIJACK_PDB == "":
+        assert pdb.set_trace.func != pytest.set_trace
+    else:
+        assert pdb.set_trace.func == pytest.set_trace

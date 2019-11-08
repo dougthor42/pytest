@@ -58,11 +58,14 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config: Config):
-    import pytest
+    import os
 
-    main_plugin = pytestPDB(config)
-    config.pluginmanager.register(main_plugin, "pdbsettrace")
-    pytest.set_trace = main_plugin.set_trace
+    if os.environ.get("PYTEST_HIJACK_PDB", "1") == "1":
+        import pytest
+
+        main_plugin = pytestPDB(config)
+        config.pluginmanager.register(main_plugin, "pdbsettrace")
+        pytest.set_trace = main_plugin.set_trace
 
     if config.getvalue("trace"):
         config.pluginmanager.register(PdbTrace(config), "pdbtrace")
