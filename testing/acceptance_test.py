@@ -608,24 +608,23 @@ class TestInvocationVariants:
     def test_equivalence_pytest_pytest(self):
         assert pytest.main == py.test.cmdline.main
 
-    def test_invoke_with_invalid_type(self, capsys):
+    def test_invoke_with_invalid_type(self):
         with pytest.raises(
             TypeError, match="expected to be a list or tuple of strings, got: '-h'"
         ):
             pytest.main("-h")
 
-    def test_invoke_with_path(self, tmpdir, capsys):
+    def test_invoke_with_path(self, tmpdir):
         retcode = pytest.main(tmpdir)
         assert retcode == ExitCode.NO_TESTS_COLLECTED
-        out, err = capsys.readouterr()
 
-    def test_invoke_plugin_api(self, testdir, capsys):
+    def test_invoke_plugin_api(self, capsys):
         class MyPlugin:
             def pytest_addoption(self, parser):
                 parser.addoption("--myopt")
 
         pytest.main(["-h"], plugins=[MyPlugin()])
-        out, err = capsys.readouterr()
+        out, _ = capsys.readouterr()
         assert "--myopt" in out
 
     def test_pyargs_importerror(self, testdir, monkeypatch):
