@@ -80,15 +80,13 @@ def custom_debugger_hook():
 
 class TestPDB:
     @pytest.fixture
-    def pdblist(self, request):
-        monkeypatch = request.getfixturevalue("monkeypatch")
+    def pdblist(self, monkeypatch):
         pdblist = []
 
-        def mypdb(*args):
+        def mypdb(self, *args):
             pdblist.append(args)
 
-        plugin = request.config.pluginmanager.getplugin("debugging")
-        monkeypatch.setattr(plugin, "post_mortem", mypdb)
+        monkeypatch.setattr(_pytest.debugging.PdbBase, "post_mortem", mypdb)
         return pdblist
 
     def test_pdb_on_fail(self, testdir, pdblist):
@@ -673,10 +671,10 @@ class TestPDB:
         self.flush(child)
 
     @pytest.mark.parametrize("capture_arg", ("", "-s", "-p no:capture"))
-    def test_pdb_continue_with_recursive_debug(self, capture_arg, testdir):
+    def test_pdb_continue_with_recursive_debug(self, capture_arg, testdir, monkeypatch):
         """Full coverage for do_debug without capturing.
 
-        This is very similar to test_pdb_interaction_continue_recursive in general,
+        This is very similar to test_pdb_with_injected_do_debug in general,
         but mocks out ``pdb.set_trace`` for providing more coverage.
         """
         p1 = testdir.makepyfile(
@@ -689,72 +687,67 @@ class TestPDB:
             def set_trace():
                 __import__('pdb').set_trace()
 
-            def test_1(monkeypatch):
-                import _pytest.debugging
-
-                class pytestPDBTest(_pytest.debugging.pytestPDB):
-                    @classmethod
-                    def set_trace(cls, *args, **kwargs):
-                        # Init PytestPdbWrapper to handle capturing.
-                        _pdb = cls._init_pdb("set_trace", *args, **kwargs)
-
-                        # Mock out pdb.Pdb.do_continue.
-                        import pdb
-                        pdb.Pdb.do_continue = lambda self, arg: None
-
-                        print("===" + " SET_TRACE ===")
-                        assert input() == "debug set_trace()"
-
-                        # Simulate PytestPdbWrapper.do_debug
-                        cls._recursive_debug += 1
-                        print("ENTERING RECURSIVE DEBUGGER")
-                        print("===" + " SET_TRACE_2 ===")
-
-                        assert input() == "c"
-                        _pdb.do_continue("")
-                        print("===" + " SET_TRACE_3 ===")
-
-                        # Simulate PytestPdbWrapper.do_debug
-                        print("LEAVING RECURSIVE DEBUGGER")
-                        cls._recursive_debug -= 1
-
-                        print("===" + " SET_TRACE_4 ===")
-                        assert input() == "c"
-                        _pdb.do_continue("")
-
-                    def do_continue(self, arg):
-                        print("=== do_continue")
-
-                monkeypatch.setattr(_pytest.debugging, "pytestPDB", pytestPDBTest)
-
-                import pdb
-                monkeypatch.setattr(pdb, "set_trace", pytestPDBTest.set_trace)
-
-                set_trace()
+            def test():
+                __import__('pdb').set_trace()
         """
         )
-        child = testdir.spawn_pytest("--tb=short {} {}".format(p1, capture_arg))
-        child.expect("=== SET_TRACE ===")
-        before = child.before.decode("utf8")
-        if not capture_arg:
-            assert ">>> PDB set_trace (IO-capturing turned off) >>>" in before
-        else:
-            assert ">>> PDB set_trace >>>" in before
-        child.sendline("debug set_trace()")
-        child.expect("=== SET_TRACE_2 ===")
-        before = child.before.decode("utf8")
-        assert "\r\nENTERING RECURSIVE DEBUGGER\r\n" in before
-        child.sendline("c")
-        child.expect("=== SET_TRACE_3 ===")
+        testdir.makepyfile(
+            custom_pdb="""
+            class MockedPdb:
+                def do_debug(self, arg):
+                    print("ENTERING RECURSIVE DEBUGGER")
+                    assert input() == "c"
+                    self.do_continue("")
+                    print("===" + " SET_TRACE_2 ===")
+                    assert input() == "c"
+                    self.do_continue("")
+                    print("LEAVING RECURSIVE DEBUGGER")
 
+                def do_continue(self, arg):
+                    pass
+
+            class CustomPdb(MockedPdb):
+                def __init__(self, *args, **kwargs):
+                    print("=== init_pdb", id(self))
+                    super().__init__(*args, **kwargs)
+
+                def set_trace(self, *args, **kwargs):
+                    print("===" + " SET_TRACE ===")
+                    assert input() == "debug set_trace()"
+                    self.do_debug("set_trace()")
+
+                    print("===" + " SET_TRACE_3 ===")
+                    assert input() == "c"
+                    self.do_continue("")
+
+
+                    print("===" + " SET_TRACE_4 ===")
+
+                def do_continue(self, arg):
+                    print("=== do_continue")
+         """
+        )
+        monkeypatch.setenv("PYTHONPATH", str(testdir.tmpdir))
+        child = testdir.spawn_pytest(
+            "--tb=short --pdbcls=custom_pdb:CustomPdb {} {}".format(p1, capture_arg)
+        )
+        if not capture_arg:
+            child.expect_exact(">>> PDB set_trace (IO-capturing turned off) >>>")
+        else:
+            child.expect_exact(">>> PDB set_trace >>>")
+        child.expect_exact("=== init_pdb")
+        child.expect_exact("=== SET_TRACE ===")
+        child.sendline("debug set_trace()")
+        child.expect_exact("ENTERING RECURSIVE DEBUGGER")
+        child.sendline("c")
+        child.expect("=== SET_TRACE_2 ===")
+        child.sendline("c")
+        child.expect("LEAVING RECURSIVE DEBUGGER")
         # No continue message with recursive debugging.
         before = child.before.decode("utf8")
         assert ">>> PDB continue " not in before
 
-        child.sendline("c")
-        child.expect("=== SET_TRACE_4 ===")
-        before = child.before.decode("utf8")
-        assert "\r\nLEAVING RECURSIVE DEBUGGER\r\n" in before
+        child.expect("=== SET_TRACE_3 ===")
         child.sendline("c")
         rest = child.read().decode("utf8")
         if not capture_arg:
@@ -763,7 +756,7 @@ class TestPDB:
             assert "> PDB continue >" in rest
         assert "= 1 passed in" in rest
 
-    def test_pdb_used_outside_test(self, testdir):
+    def test_pytest_set_trace_used_outside_of_test(self, testdir):
         p1 = testdir.makepyfile(
             """
             import pytest
@@ -1137,26 +1130,31 @@ def test_trace_after_runpytest(testdir):
     """Test that debugging's pytest_configure is re-entrant."""
     p1 = testdir.makepyfile(
         """
+        import pdb
         from _pytest.debugging import pytestPDB
 
+        orig_set_trace = pdb.set_trace
+
         def test_outer(testdir):
-            assert len(pytestPDB._saved) == 1
+            assert pdb.set_trace is orig_set_trace
 
             testdir.makepyfile(
                 \"""
                 from _pytest.debugging import pytestPDB
 
                 def test_inner():
-                    assert len(pytestPDB._saved) == 2
+                    import pdb
+
+                    assert id(pdb.set_trace) != {orig_id}
                     print()
                     print("test_inner_" + "end")
-                \"""
+                \""".format(orig_id=id(orig_set_trace))
             )
 
             result = testdir.runpytest("-s", "-k", "test_inner")
             assert result.ret == 0
 
-            assert len(pytestPDB._saved) == 1
+            assert pdb.set_trace is orig_set_trace
     """
     )
     result = testdir.runpytest_subprocess("-s", "-p", "pytester", str(p1))
