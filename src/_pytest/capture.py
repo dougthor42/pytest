@@ -737,6 +737,8 @@ def _colorama_workaround():
     if sys.platform.startswith("win32"):
         try:
             import colorama  # noqa: F401
+
+            colorama.init()  # TODO: wrap_stream?
         except ImportError:
             pass
 
