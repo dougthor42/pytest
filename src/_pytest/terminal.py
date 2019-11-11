@@ -103,7 +103,7 @@ def get_terminal_width():
         try:
             _prev_sig_handler = signal.signal(signal.SIGWINCH, _clear_cache_on_sigwinch)
             _cached_terminal_width_sighandler = _clear_cache_on_sigwinch
-        except ValueError:  # e.g. "signal only works in main thread"
+        except (AttributeError, ValueError):  # e.g. "signal only works in main thread"
             _cached_terminal_width_sighandler = False
 
     if _cached_terminal_width_sighandler is False:
