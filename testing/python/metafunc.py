@@ -60,9 +60,14 @@ class TestMetafunc:
         pytest.raises(ValueError, lambda: metafunc.parametrize("y", [5, 6]))
         pytest.raises(ValueError, lambda: metafunc.parametrize("y", [5, 6]))
 
+        with pytest.raises(
+            TypeError, match="^ids must be a callable, sequence or generator$"
+        ):
+            metafunc.parametrize("y", [5, 6], ids=42)
+
     def test_parametrize_error_iterator(self):
         def func(x):
-            pass
+            raise NotImplementedError()
 
         class Exc(Exception):
             def __repr__(self):
