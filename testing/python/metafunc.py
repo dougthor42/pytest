@@ -1874,20 +1874,20 @@ class TestMarkersWithParametrization:
             def test2(y):
                 pass
 
-            @pytest.mark.parametrize("a, b", [(1, 2), (3, 4)], ids=itertools.count(1))
+            @pytest.mark.parametrize("a, b", [(1, 2), (3, 4)], ids=itertools.count())
             def test_converted_to_str(a, b):
                 pass
         """
         )
         result = testdir.runpytest("-vv", "-s")
-        result.stdout.fnmatch_lines(
+        result.stdout.fnmatch_lines_random(  # random for py35.
             [
                 "test_parametrize_iterator.py::test1[param0] PASSED",
                 "test_parametrize_iterator.py::test1[param1] PASSED",
                 "test_parametrize_iterator.py::test2[param2] PASSED",
                 "test_parametrize_iterator.py::test2[param3] PASSED",
+                "test_parametrize_iterator.py::test_converted_to_str[0] PASSED",
                 "test_parametrize_iterator.py::test_converted_to_str[1] PASSED",
-                "test_parametrize_iterator.py::test_converted_to_str[2] PASSED",
                 "*= 6 passed in *",
             ]
         )
