@@ -1210,14 +1210,22 @@ def _idvalset(idx, parameterset, argnames, idfn, ids, item, config):
 def idmaker(
     argnames, parametersets, idfn=None, ids=None, config=None, item=None, idsetfn=None
 ):
+    idsetiter = None
     if idsetfn:
-        idsetfn_sig = inspect.signature(idsetfn)
-        idsetfn_kwargs = {"argnames": argnames, "item": item}
+        try:
+            idsetiter = iter(idsetfn)
+        except TypeError:
+            idsetfn_sig = inspect.signature(idsetfn)
+            idsetfn_kwargs = {"argnames": argnames, "item": item}
 
     new_ids = []
     for valindex, parameterset in enumerate(parametersets):
         if parameterset.id is not None:
             new_ids.append(parameterset.id)
+            continue
+
+        if idsetiter:
+            new_ids.append(next(idsetiter))
             continue
 
         if idsetfn:
