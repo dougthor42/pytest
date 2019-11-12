@@ -920,7 +920,9 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
         self._ids = set()
         self._arg2fixturedefs = fixtureinfo.name2fixturedefs
 
-    def parametrize(self, argnames, argvalues, indirect=False, ids=None, scope=None):
+    def parametrize(
+        self, argnames, argvalues, indirect=False, ids=None, scope=None, *, idsetfn=None
+    ):
         """ Add new invocations to the underlying test function using the list
         of argvalues for the given argnames.  Parametrization is performed
         during the collection phase.  If you need to setup expensive resources
@@ -947,11 +949,18 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             If strings, each is corresponding to the argvalues so that they are
             part of the test id. If None is given as id of specific test, the
             automatically generated id for that argument will be used.
-            If callable, it should take one argument (a single argvalue) and return
-            a string or return None. If None, the automatically generated id for that
-            argument will be used.
+
+            If callable, it should take either one argument (a single argvalue)
+            and return a string or return None. If it returns None, the
+            automatically generated id for that argument will be used.
+            You can use ``idsetfn`` to return an ID for a complete set.
+
             If no ids are provided they will be generated automatically from
             the argvalues.
+
+        :arg idsetfn: a callable to return an ID for a set of argvalues.
+            It gets passed ``index``, ``argnames``, and ``item`` as keyword
+            arguments.
 
         :arg scope: if specified it denotes the scope of the parameters.
             The scope is used for grouping tests by parameter instances.
@@ -977,7 +986,9 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
 
         arg_values_types = self._resolve_arg_value_types(argnames, indirect)
 
-        ids = self._resolve_arg_ids(argnames, ids, parameters, item=self.definition)
+        ids = self._resolve_arg_ids(
+            argnames, ids, parameters, item=self.definition, idsetfn=idsetfn
+        )
 
         scopenum = scope2index(
             scope, descr="parametrize() call in {}".format(self.function.__name__)
@@ -1002,7 +1013,7 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
                 newcalls.append(newcallspec)
         self._calls = newcalls
 
-    def _resolve_arg_ids(self, argnames, ids, parameters, item):
+    def _resolve_arg_ids(self, argnames, ids, parameters, item, idsetfn):
         """Resolves the actual ids for the given argnames, based on the ``ids`` parameter given
         to ``parametrize``.
 
@@ -1031,7 +1042,9 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
                         msg.format(func_name, saferepr(id_value), type(id_value)),
                         pytrace=False,
                     )
-        ids = idmaker(argnames, parameters, idfn, ids, self.config, item=item)
+        ids = idmaker(
+            argnames, parameters, idfn, ids, self.config, item=item, idsetfn=idsetfn
+        )
         return ids
 
     def _resolve_arg_value_types(self, argnames, indirect):
@@ -1176,19 +1189,6 @@ def _idvalset(idx, parameterset, argnames, idfn, ids, item, config):
     if parameterset.id is not None:
         return parameterset.id
     if ids is None or (idx >= len(ids) or ids[idx] is None):
-        if idfn:
-            try:
-                this_id = idfn(index=idx, argnames=argnames, item=item)
-            except TypeError:
-                pass
-            except Exception as e:
-                # See issue https://github.com/pytest-dev/pytest/issues/2169
-                msg = "{}: error raised while trying to determine ids of parameters at position {}\n"
-                msg = msg.format(item.nodeid, idx)
-                raise ValueError(msg) from e
-            else:
-                if this_id is not None:
-                    return this_id
         this_id = [
             _idval(val, argname, idx, idfn, item=item, config=config)
             for val, argname in zip(parameterset.values, argnames)
@@ -1198,11 +1198,42 @@ def _idvalset(idx, parameterset, argnames, idfn, ids, item, config):
         return _ascii_escaped_by_config(ids[idx], config)
 
 
-def idmaker(argnames, parametersets, idfn=None, ids=None, config=None, item=None):
-    ids = [
-        _idvalset(valindex, parameterset, argnames, idfn, ids, config=config, item=item)
-        for valindex, parameterset in enumerate(parametersets)
-    ]
+def idmaker(
+    argnames, parametersets, idfn=None, ids=None, config=None, item=None, idsetfn=None
+):
+    if idsetfn:
+        idsetfn_sig = inspect.signature(idsetfn)
+        idsetfn_kwargs = {
+            k: v
+            for k, v in {
+                # ("index", valindex),
+                ("argnames", argnames),
+                ("item", item),
+            }  # if k in arg_spec
+        }
+
+    ids = []
+    for valindex, parameterset in enumerate(parametersets):
+        if idsetfn:
+            idsetfn_kwargs["index"] = valindex
+            ba = idsetfn_sig.bind(**idsetfn_kwargs)
+            try:
+                this_id = idsetfn(**ba.kwargs)
+            except Exception as e:
+                msg = "{}: error raised while trying to determine id of parameters at position {}"
+                msg = msg.format(item.nodeid, valindex)
+                raise ValueError(msg) from e
+
+            if this_id is not None:
+                ids.append(this_id)
+                continue
+
+        ids.append(
+            _idvalset(
+                valindex, parameterset, argnames, idfn, ids, config=config, item=item
+            )
+        )
+
     if len(set(ids)) != len(ids):
         # The ids are not unique
         duplicates = [testid for testid in ids if ids.count(testid) > 1]

@@ -538,6 +538,56 @@ class TestMetafunc:
         )
         assert result == ["a0", "a1", "b0", "c", "b1"]
 
+    def test_idmaker_with_idsetfn(self):
+        from _pytest.python import idmaker
+
+        def idsetfn(index, argnames, item):
+            return index
+
+        result = idmaker(
+            ("a", "b"), [pytest.param(1, 2), pytest.param(3, 4)], idsetfn=idsetfn
+        )
+        assert result == [0, 1]
+
+        def idsetfn(index, argnames, item):
+            if index == 0:
+                return "first"
+
+        result = idmaker(
+            ("a", "b"), [pytest.param(1, 2), pytest.param(3, 4)], idsetfn=idsetfn
+        )
+        assert result == ["first", "3-4"]
+
+        def idsetfn(index, argnames, item):
+            raise TypeError()
+
+        class item:
+            nodeid = "nodeid"
+
+        with pytest.raises(
+            ValueError,
+            match=(
+                "nodeid: error raised while trying to determine "
+                "id of parameters at position 0"
+            ),
+        ):
+            idmaker(
+                ("a", "b"),
+                [pytest.param(1, 2), pytest.param(3, 4)],
+                idsetfn=idsetfn,
+                item=item,
+            )
+
+        def idsetfn(**kwargs):
+            return kwargs["index"] + 1
+
+        assert idmaker(
+            ("a", "b"),
+            [pytest.param(1, 2), pytest.param(3, 4)],
+            idsetfn=idsetfn,
+            item=item,
+        ) == [1, 2]
+
     def test_parametrize_indirect(self):
         """#714"""
 
