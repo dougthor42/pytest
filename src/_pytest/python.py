@@ -1186,8 +1186,6 @@ def _idval(val, argname, idx, idfn, item, config):
 
 
 def _idvalset(idx, parameterset, argnames, idfn, ids, item, config):
-    if parameterset.id is not None:
-        return parameterset.id
     if ids is None or (idx >= len(ids) or ids[idx] is None):
         this_id = [
             _idval(val, argname, idx, idfn, item=item, config=config)
@@ -1203,37 +1201,35 @@ def idmaker(
 ):
     if idsetfn:
         idsetfn_sig = inspect.signature(idsetfn)
-        idsetfn_kwargs = {
-            k: v
-            for k, v in {
-                # ("index", valindex),
-                ("argnames", argnames),
-                ("item", item),
-            }  # if k in arg_spec
-        }
+        idsetfn_kwargs = {"argnames": argnames, "item": item}
 
-    ids = []
+    new_ids = []
     for valindex, parameterset in enumerate(parametersets):
+        if parameterset.id is not None:
+            new_ids.append(parameterset.id)
+            continue
+
         if idsetfn:
             idsetfn_kwargs["index"] = valindex
             ba = idsetfn_sig.bind(**idsetfn_kwargs)
             try:
-                this_id = idsetfn(**ba.kwargs)
+                this_id = idsetfn(*ba.args, **ba.kwargs)
             except Exception as e:
                 msg = "{}: error raised while trying to determine id of parameters at position {}"
                 msg = msg.format(item.nodeid, valindex)
                 raise ValueError(msg) from e
 
             if this_id is not None:
-                ids.append(this_id)
+                new_ids.append(this_id)
                 continue
 
-        ids.append(
+        new_ids.append(
             _idvalset(
                 valindex, parameterset, argnames, idfn, ids, config=config, item=item
             )
         )
 
+    ids = new_ids
     if len(set(ids)) != len(ids):
         # The ids are not unique
         duplicates = [testid for testid in ids if ids.count(testid) > 1]
