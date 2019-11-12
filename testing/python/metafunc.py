@@ -1186,12 +1186,12 @@ class TestMetafuncFunctional:
         result.stdout.fnmatch_lines(["* 1 skipped *"])
 
     def test_parametrized_ids_invalid_type(self, testdir):
-        """Tests parametrized with ids as non-strings (#1857)."""
+        """Test error with non-strings/non-ints, without generator (#1857)."""
         testdir.makepyfile(
             """
             import pytest
 
-            @pytest.mark.parametrize("x, expected", [(10, 20), (40, 80)], ids=(None, 2))
+            @pytest.mark.parametrize("x, expected", [(1, 2), (3, 4), (5, 6)], ids=(None, 2, type))
             def test_ids_numbers(x,expected):
                 assert x * 2 == expected
         """
@@ -1199,7 +1199,8 @@ class TestMetafuncFunctional:
         result = testdir.runpytest()
         result.stdout.fnmatch_lines(
             [
-                "*In test_ids_numbers: ids must be list of strings, found: 2 (type: *'int'>)*"
+                "In test_ids_numbers: ids must be list of strings, "
+                "found: <class 'type'> (type: <class 'type'>) at index 2"
             ]
         )
 

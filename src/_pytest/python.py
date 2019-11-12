@@ -1030,7 +1030,7 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
 
     def _validate_ids(self, ids, parameters, func_name):
         try:
-            len_ids = len(ids)
+            len(ids)
         except TypeError:
             try:
                 it = iter(ids)
@@ -1039,13 +1039,13 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             else:
                 import itertools
 
-                ids = list(itertools.islice(it, len(parameters)))
-                len_ids = len(ids)
+                new_ids = list(itertools.islice(it, len(parameters)))
+        else:
+            new_ids = list(ids)
 
-        if len_ids != len(parameters):
+        if len(new_ids) != len(parameters):
             msg = "In {}: {} parameter sets specified, with different number of ids: {}"
             fail(msg.format(func_name, len(parameters), len(ids)), pytrace=False)
-        new_ids = ids[:]
         for idx, id_value in enumerate(new_ids):
             if id_value is not None:
                 if isinstance(id_value, int):
