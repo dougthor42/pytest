@@ -1033,6 +1033,8 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             try:
                 len_ids = len(ids)
             except TypeError:
+                if not hasattr(ids, "__next__"):
+                    raise TypeError("ids must have __len__ or __next__")
                 len_ids = None
             if len_ids is not None:
                 if len_ids != len(parameters):
