@@ -943,17 +943,18 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             function so that it can perform more expensive setups during the
             setup phase of a test rather than at collection time.
 
-        :arg ids: sequence of string ids, a generator or a callable.
-            If strings, each is corresponding to the argvalues so that they are
-            part of the test id. If None is given as id of specific test, the
-            automatically generated id for that argument will be used.
+        :arg ids: sequence of ids, or callable/generator returning them.
 
-            If callable, it should take either one argument (a single argvalue)
-            and return a string or return None. If it returns None, the
-            automatically generated id for that argument will be used.
+            Each id should be a string, int, float, bool, or None.
+            ``None`` means to use the auto-generated id, non-strings are
+            converted to strings.
 
-            You can also pass a generator, or iterator like
-            ``itertools.count()``.
+            With sequences (which includes generators like ``itertools.count()``)
+            they are mapped to the corresponding index in ``argvalues``.
+
+            With callables, it will be called with a single argvalue, and
+            should return what will be used as part of the id for it.
+            Returning ``None`` will use the auto-generated id.
 
             If no ids are provided they will be generated automatically from
             the argvalues.
@@ -1048,12 +1049,12 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             fail(msg.format(func_name, len(parameters), len(ids)), pytrace=False)
         for idx, id_value in enumerate(new_ids):
             if id_value is not None:
-                if isinstance(id_value, int):
+                if isinstance(id_value, (float, int, bool)):
                     new_ids[idx] = str(id_value)
                 elif not isinstance(id_value, str):
                     from _pytest._io.saferepr import saferepr
 
-                    msg = "In {}: ids must be list of strings, found: {} (type: {!r}) at index {}"
+                    msg = "In {}: ids must be list of string/float/int/bool, found: {} (type: {!r}) at index {}"
                     fail(
                         msg.format(func_name, saferepr(id_value), type(id_value), idx),
                         pytrace=False,

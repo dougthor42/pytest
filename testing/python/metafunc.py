@@ -86,7 +86,10 @@ class TestMetafunc:
         ]
         with pytest.raises(
             fail.Exception,
-            match=r"In func: ids must be list of strings, found: Exc\(from_gen\) \(type: <class .*Exc'>\) at index 2",
+            match=(
+                r"In func: ids must be list of string/float/int/bool, found:"
+                r" Exc\(from_gen\) \(type: <class .*Exc'>\) at index 2"
+            ),
         ):
             metafunc.parametrize("x", [1, 2, 3], ids=gen())
 
@@ -539,9 +542,22 @@ class TestMetafunc:
             @pytest.mark.parametrize("arg", ({1: 2}, {3, 4}), ids=ids)
             def test(arg):
                 assert arg
+
+            @pytest.mark.parametrize("arg", (1, 2.0, True), ids=ids)
+            def test_int(arg):
+                assert arg
             """
         )
-        assert testdir.runpytest().ret == 0
+        result = testdir.runpytest("-vv", "-s")
+        result.stdout.fnmatch_lines(
+            [
+                "test_parametrize_ids_returns_non_string.py::test[arg0] PASSED",
+                "test_parametrize_ids_returns_non_string.py::test[arg1] PASSED",
+                "test_parametrize_ids_returns_non_string.py::test_int[1] PASSED",
+                "test_parametrize_ids_returns_non_string.py::test_int[2.0] PASSED",
+                "test_parametrize_ids_returns_non_string.py::test_int[True] PASSED",
+            ]
+        )
 
     def test_idmaker_with_ids(self):
         from _pytest.python import idmaker
@@ -1204,8 +1220,8 @@ class TestMetafuncFunctional:
         result = testdir.runpytest()
         result.stdout.fnmatch_lines(
             [
-                "In test_ids_numbers: ids must be list of strings, "
-                "found: <class 'type'> (type: <class 'type'>) at index 2"
+                "In test_ids_numbers: ids must be list of string/float/int/bool,"
+                " found: <class 'type'> (type: <class 'type'>) at index 2"
             ]
         )
 
