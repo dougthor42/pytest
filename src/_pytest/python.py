@@ -1040,20 +1040,25 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
                 import itertools
 
                 ids = list(itertools.islice(it, len(parameters)))
+                len_ids = len(ids)
 
         if len_ids != len(parameters):
             msg = "In {}: {} parameter sets specified, with different number of ids: {}"
             fail(msg.format(func_name, len(parameters), len(ids)), pytrace=False)
-        for id_value in ids:
-            if id_value is not None and not isinstance(id_value, str):
-                from _pytest._io.saferepr import saferepr
+        new_ids = ids[:]
+        for idx, id_value in enumerate(new_ids):
+            if id_value is not None:
+                if isinstance(id_value, int):
+                    new_ids[idx] = str(id_value)
+                elif not isinstance(id_value, str):
+                    from _pytest._io.saferepr import saferepr
 
-                msg = "In {}: ids must be list of strings, found: {} (type: {!r})"
-                fail(
-                    msg.format(func_name, saferepr(id_value), type(id_value)),
-                    pytrace=False,
-                )
-        return ids
+                    msg = "In {}: ids must be list of strings, found: {} (type: {!r}) at index {}"
+                    fail(
+                        msg.format(func_name, saferepr(id_value), type(id_value), idx),
+                        pytrace=False,
+                    )
+        return new_ids
 
     def _resolve_arg_value_types(self, argnames, indirect):
         """Resolves if each parametrized argument must be considered a parameter to a fixture or a "funcarg"

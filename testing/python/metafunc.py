@@ -7,6 +7,7 @@ import attr
 import pytest
 from _pytest import fixtures
 from _pytest import python
+from _pytest.outcomes import fail
 
 
 class TestMetafunc:
@@ -58,6 +59,31 @@ class TestMetafunc:
         metafunc.parametrize("y", [1, 2])
         pytest.raises(ValueError, lambda: metafunc.parametrize("y", [5, 6]))
         pytest.raises(ValueError, lambda: metafunc.parametrize("y", [5, 6]))
+
+    def test_parametrize_error_iterator(self):
+        def func(x):
+            pass
+
+        class Exc(Exception):
+            def __repr__(self):
+                return "Exc(from_gen)"
+
+        def gen():
+            yield 0
+            yield None
+            yield Exc()
+
+        metafunc = self.Metafunc(func)
+        metafunc.parametrize("x", [1, 2], ids=gen())
+        assert [(x.funcargs, x.id) for x in metafunc._calls] == [
+            ({"x": 1}, "0"),
+            ({"x": 2}, "2"),
+        ]
+        with pytest.raises(
+            fail.Exception,
+            match=r"In func: ids must be list of strings, found: Exc\(from_gen\) \(type: <class .*Exc'>\) at index 2",
+        ):
+            metafunc.parametrize("x", [1, 2, 3], ids=gen())
 
     def test_parametrize_bad_scope(self, testdir):
         def func(x):
@@ -1807,3 +1833,39 @@ class TestMarkersWithParametrization:
         )
         result = testdir.runpytest()
         result.assert_outcomes(passed=1)
+
+    def test_parametrize_iterator(self, testdir):
+        testdir.makepyfile(
+            """
+            import itertools
+            import pytest
+
+            id_parametrize = pytest.mark.parametrize(
+                ids=("param%d" % i for i in itertools.count()
+            ))
+
+            @id_parametrize('y', ['a', 'b'])
+            def test1(y):
+                pass
+
+            @id_parametrize('y', ['a', 'b'])
+            def test2(y):
+                pass
+
+            @pytest.mark.parametrize("a, b", [(1, 2), (3, 4)], ids=itertools.count(1))
+            def test_converted_to_str(a, b):
+                pass
+        """
+        )
+        result = testdir.runpytest("-vv", "-s")
+        result.stdout.fnmatch_lines(
+            [
+                "test_parametrize_iterator.py::test1[param0] PASSED",
+                "test_parametrize_iterator.py::test1[param1] PASSED",
+                "test_parametrize_iterator.py::test2[param2] PASSED",
+                "test_parametrize_iterator.py::test2[param3] PASSED",
+                "test_parametrize_iterator.py::test_converted_to_str[1] PASSED",
+                "test_parametrize_iterator.py::test_converted_to_str[2] PASSED",
+                "*= 6 passed in *",
+            ]
+        )
