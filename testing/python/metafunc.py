@@ -1857,3 +1857,23 @@ class TestMarkersWithParametrization:
         )
         result = testdir.runpytest()
         result.assert_outcomes(passed=1)
+
+    def test_parametrize_iterator(self, testdir):
+        testdir.makepyfile(
+            """
+            import itertools
+            import pytest
+
+            @pytest.mark.parametrize("a, b", [(1, 2), (3, 4)], ids=itertools.count(1))
+            def test_foo(a, b):
+                pass
+        """
+        )
+        result = testdir.runpytest("-vv", "-s")
+        result.assert_outcomes(passed=2)
+        result.stdout.fnmatch_lines(
+            [
+                "test_parametrize_iterator.py::test_foo[1] PASSED",
+                "test_parametrize_iterator.py::test_foo[2] PASSED",
+            ]
+        )

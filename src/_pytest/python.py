@@ -1032,16 +1032,25 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             ids = None
         if ids:
             func_name = self.function.__name__
-            if len(ids) != len(parameters):
-                msg = "In {}: {} parameter sets specified, with different number of ids: {}"
-                fail(msg.format(func_name, len(parameters), len(ids)), pytrace=False)
-            for id_value in ids:
-                if id_value is not None and not isinstance(id_value, str):
-                    msg = "In {}: ids must be list of strings, found: {} (type: {!r})"
+            try:
+                len_ids = len(ids)
+            except TypeError:
+                len_ids = None
+            if len_ids is not None:
+                if len_ids != len(parameters):
+                    msg = "In {}: {} parameter sets specified, with different number of ids: {}"
                     fail(
-                        msg.format(func_name, saferepr(id_value), type(id_value)),
-                        pytrace=False,
+                        msg.format(func_name, len(parameters), len(ids)), pytrace=False
                     )
+                for id_value in ids:
+                    if id_value is not None and not isinstance(id_value, str):
+                        msg = (
+                            "In {}: ids must be list of strings, found: {} (type: {!r})"
+                        )
+                        fail(
+                            msg.format(func_name, saferepr(id_value), type(id_value)),
+                            pytrace=False,
+                        )
         ids = idmaker(
             argnames, parameters, idfn, ids, self.config, item=item, idsetfn=idsetfn
         )
@@ -1186,6 +1195,8 @@ def _idval(val, argname, idx, idfn, item, config):
 
 
 def _idvalset(idx, parameterset, argnames, idfn, ids, item, config):
+    if hasattr(ids, "__next__"):
+        return next(ids)
     if ids is None or (idx >= len(ids) or ids[idx] is None):
         this_id = [
             _idval(val, argname, idx, idfn, item=item, config=config)
