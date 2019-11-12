@@ -1176,6 +1176,19 @@ def _idvalset(idx, parameterset, argnames, idfn, ids, item, config):
     if parameterset.id is not None:
         return parameterset.id
     if ids is None or (idx >= len(ids) or ids[idx] is None):
+        if idfn:
+            try:
+                this_id = idfn(index=idx, argnames=argnames, item=item)
+            except TypeError:
+                pass
+            except Exception as e:
+                # See issue https://github.com/pytest-dev/pytest/issues/2169
+                msg = "{}: error raised while trying to determine ids of parameters at position {}\n"
+                msg = msg.format(item.nodeid, idx)
+                raise ValueError(msg) from e
+            else:
+                if this_id is not None:
+                    return this_id
         this_id = [
             _idval(val, argname, idx, idfn, item=item, config=config)
             for val, argname in zip(parameterset.values, argnames)
