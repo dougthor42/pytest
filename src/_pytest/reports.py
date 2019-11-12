@@ -1,5 +1,6 @@
 from io import StringIO
 from pprint import pprint
+from time import time
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -213,7 +214,7 @@ class TestReport(BaseReport):
         longrepr,
         when,
         sections=(),
-        duration=0,
+        duration: float = 0,
         user_properties=None,
         **extra
     ):
@@ -264,6 +265,8 @@ class TestReport(BaseReport):
         Factory method to create and fill a TestReport with standard item and call info.
         """
         when = call.when
+        if not call.stop:
+            call.stop = time()
         duration = call.stop - call.start
         keywords = {x: 1 for x in item.keywords}
         excinfo = call.excinfo

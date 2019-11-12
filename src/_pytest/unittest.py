@@ -193,43 +193,23 @@ class TestCaseFunction(Function):
 
     def runtest(self):
         testMethod = getattr(self._testcase, self._testcase._testMethodName)
-
-        class _GetOutOf_testPartExecutor(KeyboardInterrupt):
-            """Helper exception to get out of unittests's testPartExecutor."""
-
-        unittest = sys.modules.get("unittest")
-
-        reraise = ()
-        if unittest:
-            reraise += (unittest.SkipTest,)
+        import unittest
 
         @functools.wraps(testMethod)
         def wrapped_testMethod(*args, **kwargs):
             try:
                 self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-            except reraise:
+            except unittest.SkipTest:
                 raise
-            except Exception as exc:
-                expecting_failure_method = getattr(
-                    testMethod, "__unittest_expecting_failure__", False
-                )
-                expecting_failure_class = getattr(
-                    self, "__unittest_expecting_failure__", False
-                )
-                expecting_failure = expecting_failure_class or expecting_failure_method
-                self._need_tearDown = True
+            except Exception:
+                from _pytest.runner import _report_for_call
 
-                if expecting_failure:
-                    raise
-
-                raise _GetOutOf_testPartExecutor(exc)
+                assert self._current_callinfo
+                _report_for_call(self)
 
         self._testcase._wrapped_testMethod = wrapped_testMethod
         self._testcase._testMethodName = "_wrapped_testMethod"
-        try:
-            self._testcase(result=self)
-        except _GetOutOf_testPartExecutor as exc:
-            raise exc.args[0] from exc.args[0]
+        self._testcase(result=self)
 
     def _prunetraceback(self, excinfo):
         Function._prunetraceback(self, excinfo)

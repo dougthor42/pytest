@@ -23,6 +23,7 @@ from _pytest.mark.structures import Mark
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import NodeKeywords
 from _pytest.outcomes import Failed
+from _pytest.runner import CallInfo
 
 if False:  # TYPE_CHECKING
     # Imported here due to circular import.
@@ -122,6 +123,8 @@ class Node:
             self._nodeid = self.parent.nodeid
             if self.name != "()":
                 self._nodeid += "::" + self.name
+
+        self._current_callinfo = None  # type: Optional[CallInfo]
 
     @property
     def ihook(self):
