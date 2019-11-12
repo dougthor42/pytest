@@ -1024,8 +1024,6 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
         :rtype: List[str]
         :return: the list of ids for each argname given
         """
-        from _pytest._io.saferepr import saferepr
-
         idfn = None
         if callable(ids):
             idfn = ids
@@ -1044,6 +1042,8 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
                     )
                 for id_value in ids:
                     if id_value is not None and not isinstance(id_value, str):
+                        from _pytest._io.saferepr import saferepr
+
                         msg = (
                             "In {}: ids must be list of strings, found: {} (type: {!r})"
                         )
