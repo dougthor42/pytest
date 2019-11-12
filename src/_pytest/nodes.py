@@ -23,11 +23,11 @@ from _pytest.mark.structures import Mark
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import NodeKeywords
 from _pytest.outcomes import Failed
-from _pytest.runner import CallInfo
 
 if False:  # TYPE_CHECKING
     # Imported here due to circular import.
     from _pytest.main import Session  # noqa: F401
+    from _pytest.runner import CallInfo  # noqa: F401
 
 SEP = "/"
 
