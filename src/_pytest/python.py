@@ -943,18 +943,20 @@ class Metafunc(fixtures.FuncargnamesCompatAttr):
             function so that it can perform more expensive setups during the
             setup phase of a test rather than at collection time.
 
-        :arg ids: sequence of ids, or callable/generator returning them.
+        :arg ids: sequence of (or generator for) ids for ``argvalues``,
+              or a callable to return part of the id for each argvalue.
 
-            Each id should be a string, int, float, bool, or None.
-            ``None`` means to use the auto-generated id, non-strings are
-            converted to strings.
+            With sequences (and generators like ``itertools.count()``) the
+            returned ids should be of type ``string``, ``int``, ``float``,
+            ``bool``, or ``None``.
+            They are mapped to the corresponding index in ``argvalues``.
+            ``None`` means to use the auto-generated id.
 
-            With sequences (which includes generators like ``itertools.count()``)
-            they are mapped to the corresponding index in ``argvalues``.
-
-            With callables, it will be called with a single argvalue, and
-            should return what will be used as part of the id for it.
-            Returning ``None`` will use the auto-generated id.
+            If it is a callable it will be called for each entry in
+            ``argvalues``, and the return value is used as part of the
+            auto-generated id for the whole set.
+            This is useful to provide more specific ids for certain times, e.g.
+            dates.  Returning ``None`` will use an auto-generated id.
 
             If no ids are provided they will be generated automatically from
             the argvalues.
