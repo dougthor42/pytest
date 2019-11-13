@@ -11,6 +11,10 @@ from _pytest.compat import importlib_metadata
 from _pytest.main import ExitCode
 
 
+def test_fail():
+    assert 0, 42
+
+
 def prepend_pythonpath(*dirs):
     cur = os.getenv("PYTHONPATH")
     if cur:
