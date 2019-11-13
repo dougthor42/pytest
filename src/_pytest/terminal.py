@@ -1153,7 +1153,7 @@ def _get_pos(config, rep):
     assert isinstance(testloc.path, str), testloc.path
     testloc_path = Path(testloc.path)
     try:
-        testloc_path = testloc_path.relative_to(config.invocation_dir)
+        testloc_path = testloc_path.relative_to(str(config.invocation_dir))
     except ValueError:
         pass
 
