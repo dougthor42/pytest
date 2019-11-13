@@ -361,7 +361,7 @@ class TerminalReporter:
         self._tw = _pytest.config.create_terminal_writer(config, file)
         # self.writer will be deprecated in pytest-3.4
         self.writer = self._tw
-        self.currentfspath = None  # type: Optional[int]
+        self.currentfspath = None  # type: Any
         self.reportchars = getreportopt(config)
         self.hasmarkup = self._tw.hasmarkup
         self.isatty = file.isatty()
