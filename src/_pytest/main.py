@@ -661,7 +661,7 @@ class Session(nodes.FSCollector):
         if ":" in arg:
             m = RE_FNAME_LINENO.match(arg)
             if m:
-                fname, lineno = m[1], int(m[2])
+                fname, lineno = m.group(1), int(m.group(2))
         return fname, lineno
 
     def _parsearg(self, arg):
