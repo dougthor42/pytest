@@ -378,7 +378,7 @@ class PyCollector(PyobjMixin, nodes.Collector):
                 if not isinstance(res, list):
                     res = [res]
                 values.extend(res)
-        values.sort(key=lambda item: item.reportinfo()[:2])
+        values.sort(key=lambda item: item.nodeid)
         return values
 
     def _makeitem(self, name, obj):
