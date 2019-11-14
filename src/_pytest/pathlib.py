@@ -374,20 +374,15 @@ def _shorten_path(path: Path, real_home: bool = True) -> Path:
         return path
 
     if real_home:
+        import pwd
+
         try:
-            import pwd
-            try:
-                homedir = pwd.getpwuid(os.getuid()).pw_dir
-            except KeyError:
-                # User not in password database.
-                home = Path.home()
-            else:
-                home = Path(homedir)
-        except ImportError:
-            # Not on linux.
-            home = None
-
-
+            homedir = pwd.getpwuid(os.getuid()).pw_dir
+        except KeyError:
+            # User not in password database.
+            home = Path.home()
+        else:
+            home = Path(homedir)
     else:
         home = Path.home()
 
